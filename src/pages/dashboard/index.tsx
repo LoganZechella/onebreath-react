@@ -70,41 +70,30 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 animate__animated animate__fadeIn">
-      <div className="flex justify-end mb-6">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
         <button
           onClick={() => setShowScanner(true)}
-          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-full 
-                   shadow-lg transition-colors flex items-center space-x-2"
+          className="btn-primary flex items-center space-x-2"
         >
-          <svg 
-            className="w-6 h-6" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M12 4v16m8-8H4" 
-            />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           <span>New Sample</span>
         </button>
       </div>
 
-      <QRScanner
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScanSuccess={handleScanSuccess}
-      />
-
-      <div className="grid gap-8">
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {/* In Process Section */}
-        <section className="bg-white/70 backdrop-blur-xl rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">In Process</h2>
-          <div className="grid gap-4">
+        <section className="section-card" data-aos="fade-up" data-aos-delay="100">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">In Process</h2>
+            <span className="status-badge bg-primary/10 text-primary dark:text-primary-light">
+              {samples.filter(s => s.status === 'In Process').length} Active
+            </span>
+          </div>
+          <div className="space-y-4">
             {samples
               .filter(sample => sample.status === 'In Process')
               .map(sample => (
@@ -114,9 +103,14 @@ export default function Dashboard() {
         </section>
 
         {/* Ready for Pickup Section */}
-        <section className="bg-white/70 backdrop-blur-xl rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">Ready for Pickup</h2>
-          <div className="grid gap-4">
+        <section className="section-card" data-aos="fade-up" data-aos-delay="200">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ready for Pickup</h2>
+            <span className="status-badge bg-accent/10 text-accent-dark dark:text-accent-light">
+              {samples.filter(s => s.status === 'Ready for Pickup').length} Active
+            </span>
+          </div>
+          <div className="space-y-4">
             {samples
               .filter(sample => sample.status === 'Ready for Pickup')
               .map(sample => (
@@ -126,9 +120,14 @@ export default function Dashboard() {
         </section>
 
         {/* Ready for Analysis Section */}
-        <section className="bg-white/70 backdrop-blur-xl rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">Ready for Analysis</h2>
-          <div className="grid gap-4">
+        <section className="section-card" data-aos="fade-up" data-aos-delay="300">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ready for Analysis</h2>
+            <span className="status-badge bg-secondary/10 text-secondary-dark dark:text-secondary-light">
+              {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length} Active
+            </span>
+          </div>
+          <div className="space-y-4">
             {samples
               .filter(sample => sample.status === 'Picked up. Ready for Analysis')
               .map(sample => (
@@ -137,6 +136,14 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
+
+      {showScanner && (
+        <QRScanner 
+          isOpen={showScanner}
+          onScanSuccess={handleScanSuccess} 
+          onClose={() => setShowScanner(false)} 
+        />
+      )}
     </div>
   );
 }
