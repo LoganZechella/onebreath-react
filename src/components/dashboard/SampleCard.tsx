@@ -6,6 +6,12 @@ interface Sample {
   location: string;
   status: string;
   timestamp: string;
+  batch_number?: string;
+  expected_completion_time?: string;
+  final_volume?: number;
+  average_co2?: number;
+  error?: string;
+  patient_id?: string;
 }
 
 interface SampleCardProps {
@@ -102,36 +108,91 @@ export default function SampleCard({ sample, onStatusUpdate }: SampleCardProps) 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 animate__animated animate__fadeIn">
-      <div className="flex justify-between items-start">
+    <div className="relative bg-white/90 dark:bg-surface-dark/90 rounded-xl shadow-lg p-6 
+            backdrop-blur-sm border border-gray-100 dark:border-gray-800
+            transition-all duration-300 hover:shadow-xl hover:scale-[1.02]
+            animate__animated animate__fadeIn">
+      <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-bold">{sample.chip_id}</h3>
-          <p className="text-sm text-gray-600">Location: {sample.location}</p>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white 
+                     flex items-center gap-2">
+            {sample.chip_id}
+            <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary 
+                            dark:bg-primary-dark/20 dark:text-primary-light">
+              {sample.location}
+            </span>
+          </h3>
+          <div className="space-y-1 mt-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Added: {new Date(sample.timestamp).toLocaleDateString()}
+            </p>
+            {sample.batch_number && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Batch: {sample.batch_number}
+              </p>
+            )}
+            {sample.patient_id && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Patient ID: {sample.patient_id}
+              </p>
+            )}
+          </div>
         </div>
         <div className="text-right">
-          <p className="font-semibold">{sample.status}</p>
+          <p className="font-medium px-3 py-1 rounded-full text-sm
+                       bg-accent/10 text-accent-dark dark:text-accent-light">
+            {sample.status}
+          </p>
           {sample.status === 'In Process' && (
-            <p className="text-sm text-gray-600">{timeRemaining}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+              {timeRemaining}
+            </p>
           )}
         </div>
       </div>
 
-      <div className="flex justify-center mt-4 space-x-2">
+      {sample.status === 'Picked up. Ready for Analysis' && (
+        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4">
+            {sample.final_volume !== undefined && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Final Volume</p>
+                <p className="font-medium">{sample.final_volume} mL</p>
+              </div>
+            )}
+            {sample.average_co2 !== undefined && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Average CO₂</p>
+                <p className="font-medium">{sample.average_co2}%</p>
+              </div>
+            )}
+          </div>
+          {sample.error && (
+            <div className="mt-2 text-sm text-red-600 dark:text-red-400">
+              Error: {sample.error}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-end mt-4 space-x-3">
         {sample.status === 'In Process' && (
           <>
             <button
               onClick={handleFinishEarly}
-              className="p-2 bg-transparent hover:bg-gray-100 rounded-full transition-colors"
+              className="btn-icon"
             >
               <img 
                 src="/assets/images/icons8-check-ios-17-filled-96.png" 
                 alt="Finish" 
-                className="w-6 h-6 opacity-60"
+                className="w-6 h-6 opacity-60 hover:opacity-100 transition-opacity"
               />
             </button>
             <button
               onClick={handleEdit}
-              className="text-sm text-gray-600 underline hover:text-gray-800"
+              className="text-sm text-primary dark:text-primary-light 
+                         hover:text-primary-dark dark:hover:text-primary 
+                         transition-colors"
             >
               Edit
             </button>
@@ -140,7 +201,7 @@ export default function SampleCard({ sample, onStatusUpdate }: SampleCardProps) 
         {sample.status === 'Ready for Pickup' && (
           <button
             onClick={handlePickup}
-            className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded transition-colors"
+            className="btn-primary"
           >
             Pickup
           </button>
@@ -148,21 +209,26 @@ export default function SampleCard({ sample, onStatusUpdate }: SampleCardProps) 
       </div>
 
       {showEditMenu && (
-        <div className="absolute mt-2 bg-white rounded-lg shadow-lg p-2 z-10">
+        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-surface-dark 
+                        rounded-lg shadow-xl border border-gray-100 dark:border-gray-800 
+                        p-1 z-10 animate__animated animate__fadeIn">
           <button 
-            className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200
+                       hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
             onClick={() => {/* Handle update */}}
           >
             Update
           </button>
           <button 
-            className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200
+                       hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
             onClick={() => {/* Handle upload */}}
           >
             Upload
           </button>
           <button 
-            className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200
+                       hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
             onClick={() => setShowEditMenu(false)}
           >
             Cancel
