@@ -27,6 +27,16 @@ export default {
           dark: '#014969',
           light: '#00E8C6',
         },
+        secondary: {
+          DEFAULT: '#6366F1',  // Indigo color
+          dark: '#4F46E5',
+          light: '#818CF8',
+        },
+        accent: {
+          DEFAULT: '#10B981',  // Emerald color
+          dark: '#059669',
+          light: '#34D399',
+        },
         surface: {
           DEFAULT: '#ffffff',
           dark: '#2d2d2d',
