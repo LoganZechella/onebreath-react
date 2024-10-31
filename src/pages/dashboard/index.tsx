@@ -9,6 +9,12 @@ interface Sample {
   location: string;
   status: string;
   timestamp: string;
+  batch_number?: string;
+  expected_completion_time?: string;
+  final_volume?: number;
+  average_co2?: number;
+  error?: string;
+  patient_id?: string;
 }
 
 export default function Dashboard() {
@@ -16,15 +22,21 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
   const fetchSamples = async () => {
     try {
+      setError(null);
       const response = await fetch('https://onebreathpilot.onrender.com/samples');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setSamples(data);
     } catch (error) {
       console.error('Error fetching samples:', error);
+      setError('Failed to load samples. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -43,30 +55,53 @@ export default function Dashboard() {
 
   const handleScanSuccess = async (chipId: string) => {
     try {
+      setError(null);
       const response = await fetch('https://onebreathpilot.onrender.com/update_sample', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chip_id: chipId,
           status: 'In Process',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          location: 'Lab' // You might want to make this configurable
         }),
       });
 
-      if (response.ok) {
-        fetchSamples();
-        setShowScanner(false);
-      } else {
-        throw new Error('Failed to register sample');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to register sample');
       }
+
+      await fetchSamples();
+      setShowScanner(false);
     } catch (error) {
       console.error('Error registering sample:', error);
-      alert('Failed to register sample. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to register sample. Please try again.');
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="bg-red-50 p-4 rounded-lg text-red-800">
+          <p>{error}</p>
+          <button 
+            onClick={fetchSamples}
+            className="mt-2 bg-red-100 px-4 py-2 rounded hover:bg-red-200"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -94,49 +129,70 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {samples.length === 0 ? (
+        <div className="text-center text-gray-500 mt-8">
+          No active samples found. Scan a new sample to get started.
+        </div>
+      ) : (
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {/* In Process Section */}
+          <section className="section-card" data-aos="fade-up" data-aos-delay="100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">In Process</h2>
+              <span className="status-badge bg-primary/10 text-primary dark:text-primary-light">
+                {samples.filter(s => s.status === 'In Process').length} Active
+              </span>
+            </div>
+            <div className="space-y-4">
+              {samples
+                .filter(sample => sample.status === 'In Process')
+                .map(sample => (
+                  <SampleCard key={sample.chip_id} sample={sample} />
+                ))}
+            </div>
+          </section>
+
+          {/* Ready for Pickup Section */}
+          <section className="section-card" data-aos="fade-up" data-aos-delay="200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ready for Pickup</h2>
+              <span className="status-badge bg-accent/10 text-accent-dark dark:text-accent-light">
+                {samples.filter(s => s.status === 'Ready for Pickup').length} Active
+              </span>
+            </div>
+            <div className="space-y-4">
+              {samples
+                .filter(sample => sample.status === 'Ready for Pickup')
+                .map(sample => (
+                  <SampleCard key={sample.chip_id} sample={sample} />
+                ))}
+            </div>
+          </section>
+
+          {/* Ready for Analysis Section */}
+          <section className="section-card" data-aos="fade-up" data-aos-delay="300">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ready for Analysis</h2>
+              <span className="status-badge bg-secondary/10 text-secondary dark:text-secondary-light">
+                {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length} Active
+              </span>
+            </div>
+            <div className="space-y-4">
+              {samples
+                .filter(sample => sample.status === 'Picked up. Ready for Analysis')
+                .map(sample => (
+                  <SampleCard key={sample.chip_id} sample={sample} />
+                ))}
+            </div>
+          </section>
+        </div>
+      )}
+
       <QRScanner
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}
         onScanSuccess={handleScanSuccess}
       />
-
-      <div className="grid gap-8">
-        {/* In Process Section */}
-        <section className="bg-white/70 backdrop-blur-xl rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">In Process</h2>
-          <div className="grid gap-4">
-            {samples
-              .filter(sample => sample.status === 'In Process')
-              .map(sample => (
-                <SampleCard key={sample.chip_id} sample={sample} />
-              ))}
-          </div>
-        </section>
-
-        {/* Ready for Pickup Section */}
-        <section className="bg-white/70 backdrop-blur-xl rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">Ready for Pickup</h2>
-          <div className="grid gap-4">
-            {samples
-              .filter(sample => sample.status === 'Ready for Pickup')
-              .map(sample => (
-                <SampleCard key={sample.chip_id} sample={sample} />
-              ))}
-          </div>
-        </section>
-
-        {/* Ready for Analysis Section */}
-        <section className="bg-white/70 backdrop-blur-xl rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">Ready for Analysis</h2>
-          <div className="grid gap-4">
-            {samples
-              .filter(sample => sample.status === 'Picked up. Ready for Analysis')
-              .map(sample => (
-                <SampleCard key={sample.chip_id} sample={sample} />
-              ))}
-          </div>
-        </section>
-      </div>
     </div>
   );
 }
