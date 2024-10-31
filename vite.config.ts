@@ -26,6 +26,9 @@ export default defineConfig({
           charts: ['chart.js', 'd3'],
         }
       }
-    }
+    },
+    sourcemap: true,
+    chunkSizeWarningLimit: 1000,
+    reportCompressedSize: false
   }
 })
