@@ -28,7 +28,7 @@ export default function Layout() {
             </svg>
           </button>
           <div className="text-2xl font-bold text-white">
-            <img src="src/assets/BDx_Logo_Dark.png" alt="Breath Diagnostics Logo" className="w-24" />
+            <img src="src/assets/BDx_Logo_Dark.png" alt="OneBreath" className="w-24" />
           </div>
           <div className="w-10" /> {/* Spacer to center the logo */}
         </div>
