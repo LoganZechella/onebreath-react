@@ -35,7 +35,7 @@ export default function SignIn({ isOpen, onClose }: SignInProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate__animated animate__fadeIn">
       <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 animate__animated animate__slideInUp">
         <img 
-          src="src/assets/images/BDx_Logo_Light_Cropped.png" 
+          src="onebreath-react/src/assets/images/BDx_Logo_Light_Cropped.png" 
           alt="Logo of Breath Diagnostics"
           className="w-48 mx-auto mb-6"
         />
