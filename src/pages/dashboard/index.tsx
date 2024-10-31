@@ -156,10 +156,13 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            <section className="section-card" data-aos="fade-up" data-aos-delay="100">
+            {/* In Process Section */}
+            <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">In Process</h2>
-                <span className="status-badge bg-primary/10 text-primary dark:text-primary-light">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  In Process
+                </h2>
+                <span className="px-3 py-1 text-sm font-medium rounded-full bg-primary-light/20 text-primary-dark dark:text-primary-light">
                   {samples.filter(s => s.status === 'In Process').length} Active
                 </span>
               </div>
@@ -172,10 +175,13 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <section className="section-card" data-aos="fade-up" data-aos-delay="200">
+            {/* Ready for Pickup Section */}
+            <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ready for Pickup</h2>
-                <span className="status-badge bg-accent/10 text-accent-dark dark:text-accent-light">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Ready for Pickup
+                </h2>
+                <span className="px-3 py-1 text-sm font-medium rounded-full bg-accent-light/20 text-accent-dark dark:text-accent-light">
                   {samples.filter(s => s.status === 'Ready for Pickup').length} Active
                 </span>
               </div>
@@ -188,10 +194,14 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <section className="section-card" data-aos="fade-up" data-aos-delay="300">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ready for Analysis</h2>
-                <span className="status-badge bg-secondary/10 text-secondary dark:text-secondary-light">
+            {/* Ready for Analysis Section */}
+            <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <div className="flex items-center justify-between mb-6 gap-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                  Ready for Analysis
+                </h2>
+                <span className="px-3 py-1.5 text-sm font-medium rounded-full bg-secondary-light/20 
+                       text-secondary-dark dark:text-secondary-light whitespace-nowrap">
                   {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length} Active
                 </span>
               </div>
