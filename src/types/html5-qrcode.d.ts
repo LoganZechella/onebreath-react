@@ -9,6 +9,9 @@ declare module 'html5-qrcode' {
         showTorchButtonIfSupported?: boolean;
         showZoomSliderIfSupported?: boolean;
         defaultZoomValueIfSupported?: number;
+        videoConstraints?: {
+          facingMode?: { ideal: string };
+        };
       },
       verbose: boolean
     );
