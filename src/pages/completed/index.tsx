@@ -16,12 +16,14 @@ export default function CompletedSamples() {
   const fetchCompletedSamples = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await sampleService.getCompletedSamples();
       setSamples(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError('Failed to fetch completed samples');
-      console.error(err);
-      setSamples([]); // Set empty array on error
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch completed samples';
+      setError(errorMessage);
+      console.error('Error:', err);
+      setSamples([]);
     } finally {
       setLoading(false);
     }
