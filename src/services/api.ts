@@ -39,7 +39,9 @@ export const sampleService = {
 
   getCompletedSamples: async (): Promise<Sample[]> => {
     try {
+      console.log('Fetching completed samples...');
       const response = await api.get('/completed_samples');
+      console.log('Completed samples response:', response.data);
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       console.error('Error fetching completed samples:', error);

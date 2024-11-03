@@ -180,9 +180,15 @@ def download_dataset():
 @api.route('/completed_samples', methods=['GET'])
 def get_completed_samples():
     from ..main import collection
-    all_samples = collection.find({"status": "Complete"}, {"_id": 0})
-    completed_samples = [convert_decimal128(sample) for sample in all_samples]
-    return jsonify(completed_samples), 200
+    try:
+        print("Fetching completed samples...")
+        all_samples = collection.find({"status": "Complete"}, {"_id": 0})
+        completed_samples = [convert_decimal128(sample) for sample in all_samples]
+        print(f"Found {len(completed_samples)} completed samples")
+        return jsonify(completed_samples), 200
+    except Exception as e:
+        print(f"Error fetching completed samples: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @api.route('/upload_document_metadata', methods=['POST'])
 def upload_document_metadata():
