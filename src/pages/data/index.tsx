@@ -106,7 +106,7 @@ export default function DataViewer() {
 
     const fetchAnalyzedSamples = async () => {
       try {
-        const response = await fetch('https://onebreathpilot.onrender.com/analyzed');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/analyzed`);
         const data = await response.json();
         setSamples(data);
       } catch (error) {
