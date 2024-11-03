@@ -1,60 +1,49 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { sampleService } from '../../services/api';
+import { Sample } from '../../types';
 import SampleCard from '../../components/dashboard/SampleCard';
 import QRScanner from '../../components/dashboard/QRScanner';
 import SampleRegistrationForm from '../../components/dashboard/SampleRegistrationForm';
 import { Toaster } from 'react-hot-toast';
 
-interface Sample {
-  chip_id: string;
-  location: string;
-  status: string;
-  timestamp: string;
-  batch_number?: string;
-  expected_completion_time?: string;
-  final_volume?: number;
-  average_co2?: number;
-  error?: string;
-  patient_id?: string;
-}
-
 export default function Dashboard() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
 
+  useEffect(() => {
+    fetchSamples();
+  }, []);
+
   const fetchSamples = async () => {
     try {
-      setError(null);
-      const response = await fetch('https://onebreathpilot.onrender.com/samples');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setSamples(data);
-    } catch (error) {
-      console.error('Error fetching samples:', error);
-      setError('Failed to load samples. Please try again later.');
+      setLoading(true);
+      const data = await sampleService.getSamples();
+      setSamples(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError('Failed to fetch samples');
+      console.error(err);
+      setSamples([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/');
-      return;
+  const handleUpdateSample = async (chipId: string, status: string, location: string) => {
+    try {
+      await sampleService.updateSample({
+        chip_id: chipId,
+        status,
+        location
+      });
+      await fetchSamples(); // Refresh the list
+    } catch (err) {
+      setError('Failed to update sample');
+      console.error(err);
     }
-
-    fetchSamples();
-    const interval = setInterval(fetchSamples, 60000);
-    return () => clearInterval(interval);
-  }, [user, navigate]);
+  };
 
   const handleSampleRegistration = async (sampleData: {
     chip_id: string;
@@ -63,27 +52,18 @@ export default function Dashboard() {
   }) => {
     try {
       setError(null);
-      const response = await fetch('https://onebreathpilot.onrender.com/register_sample', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...sampleData,
-          status: 'In Process',
-          timestamp: new Date().toISOString()
-        }),
+      await sampleService.registerSample({
+        ...sampleData,
+        status: 'In Process',
+        timestamp: new Date().toISOString()
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to register sample');
-      }
 
       await fetchSamples();
       setShowScanner(false);
       setShowManualEntry(false);
     } catch (error) {
+      setError((error as Error).message);
       console.error('Error registering sample:', error);
-      throw error;
     }
   };
 
@@ -150,71 +130,92 @@ export default function Dashboard() {
           </div>
         )}
 
-        {samples.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
-            No active samples found. Add a new sample to get started.
-          </div>
-        ) : (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {/* In Process Section */}
-            <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  In Process
-                </h2>
-                <span className="px-3 py-1 text-sm font-medium rounded-full bg-primary-light/20 text-primary-dark dark:text-primary-light">
-                  {samples.filter(s => s.status === 'In Process').length} Active
-                </span>
-              </div>
-              <div className="space-y-4">
-                {samples
-                  .filter(sample => sample.status === 'In Process')
-                  .map(sample => (
-                    <SampleCard key={sample.chip_id} sample={sample} />
-                  ))}
-              </div>
-            </section>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {/* In Process Section */}
+          <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                In Process
+              </h2>
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-primary-light/20 text-primary-dark dark:text-primary-light">
+                {samples.filter(s => s.status === 'In Process').length} Active
+              </span>
+            </div>
+            <div className="space-y-4">
+              {samples
+                .filter(sample => sample.status === 'In Process')
+                .map(sample => (
+                  <SampleCard 
+                    key={sample.chip_id} 
+                    sample={sample} 
+                    onUpdateStatus={handleUpdateSample}
+                  />
+                ))}
+              {samples.filter(s => s.status === 'In Process').length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  No samples in process
+                </div>
+              )}
+            </div>
+          </section>
 
-            {/* Ready for Pickup Section */}
-            <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Ready for Pickup
-                </h2>
-                <span className="px-3 py-1 text-sm font-medium rounded-full bg-accent-light/20 text-accent-dark dark:text-accent-light">
-                  {samples.filter(s => s.status === 'Ready for Pickup').length} Active
-                </span>
-              </div>
-              <div className="space-y-4">
-                {samples
-                  .filter(sample => sample.status === 'Ready for Pickup')
-                  .map(sample => (
-                    <SampleCard key={sample.chip_id} sample={sample} />
-                  ))}
-              </div>
-            </section>
+          {/* Ready for Pickup Section */}
+          <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Ready for Pickup
+              </h2>
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-accent-light/20 text-accent-dark dark:text-accent-light">
+                {samples.filter(s => s.status === 'Ready for Pickup').length} Active
+              </span>
+            </div>
+            <div className="space-y-4">
+              {samples
+                .filter(sample => sample.status === 'Ready for Pickup')
+                .map(sample => (
+                  <SampleCard 
+                    key={sample.chip_id} 
+                    sample={sample} 
+                    onUpdateStatus={handleUpdateSample}
+                  />
+                ))}
+              {samples.filter(s => s.status === 'Ready for Pickup').length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  No samples ready for pickup
+                </div>
+              )}
+            </div>
+          </section>
 
-            {/* Ready for Analysis Section */}
-            <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-between mb-6 gap-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
-                  Ready for Analysis
-                </h2>
-                <span className="px-3 py-1.5 text-sm font-medium rounded-full bg-secondary-light/20 
-                       text-secondary-dark dark:text-secondary-light whitespace-nowrap">
-                  {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length} Active
-                </span>
-              </div>
-              <div className="space-y-4">
-                {samples
-                  .filter(sample => sample.status === 'Picked up. Ready for Analysis')
-                  .map(sample => (
-                    <SampleCard key={sample.chip_id} sample={sample} />
-                  ))}
-              </div>
-            </section>
-          </div>
-        )}
+          {/* Ready for Analysis Section */}
+          <section className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-6 gap-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                Ready for Analysis
+              </h2>
+              <span className="px-3 py-1.5 text-sm font-medium rounded-full bg-secondary-light/20 
+                     text-secondary-dark dark:text-secondary-light whitespace-nowrap">
+                {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length} Active
+              </span>
+            </div>
+            <div className="space-y-4">
+              {samples
+                .filter(sample => sample.status === 'Picked up. Ready for Analysis')
+                .map(sample => (
+                  <SampleCard 
+                    key={sample.chip_id} 
+                    sample={sample} 
+                    onUpdateStatus={handleUpdateSample}
+                  />
+                ))}
+              {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  No samples ready for analysis
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     </>
   );

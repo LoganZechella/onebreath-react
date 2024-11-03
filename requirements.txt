@@ -1,0 +1,9 @@
+flask
+flask-cors
+flask-mail
+firebase-admin
+google-cloud-storage
+pymongo
+openai
+python-dotenv
+twilio
