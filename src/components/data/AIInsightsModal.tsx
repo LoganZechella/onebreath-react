@@ -14,7 +14,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('https://onebreathpilot.onrender.com/ai_analysis');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai_analysis`);
       const data = await response.json();
       if (data.success) {
         setInsights(formatInsights(data.insights));
