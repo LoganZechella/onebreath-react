@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytz
 import json
 import gzip
-from ..config import Config
+from src.server.config import Config
 from flask import current_app
 
 def send_email(subject, body):

@@ -2,7 +2,7 @@ import threading
 import time
 from datetime import datetime
 import pytz
-from ..utils.helpers import send_email
+from src.server.utils.helpers import send_email
 
 def check_and_update_samples(collection):
     while True:
