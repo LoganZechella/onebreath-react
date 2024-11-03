@@ -15,6 +15,8 @@ setup(
         'openai>=1.14.1',
         'python-dotenv>=1.0.1',
         'twilio>=9.0.0',
-        'gunicorn>=21.2.0'
+        'gunicorn>=21.2.0',
+        'pytz>=2024.1',
+        'Werkzeug>=3.0.1'
     ],
 ) 
