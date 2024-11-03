@@ -7,3 +7,4 @@ pymongo
 openai
 python-dotenv
 twilio
+gunicorn

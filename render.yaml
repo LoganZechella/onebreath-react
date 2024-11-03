@@ -3,7 +3,7 @@ services:
     name: flask-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: cd src/server && python -m flask run --host 0.0.0.0 --port $PORT
+    startCommand: cd src/server && gunicorn wsgi:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
