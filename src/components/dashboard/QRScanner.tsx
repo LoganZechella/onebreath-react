@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 import SampleRegistrationForm from './SampleRegistrationForm';
+
+// Remove type-only import and declare Html5QrcodeScanner as any temporarily
+declare const Html5QrcodeScanner: any;
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -16,7 +18,7 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
   const [scannedChipId, setScannedChipId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -42,7 +44,7 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
     );
 
     scanner.render(
-      (decodedText) => {
+      (decodedText: string) => {
         const chipIdMatch = decodedText.match(/P\d{5}/);
         if (chipIdMatch) {
           setScannedChipId(chipIdMatch[0]);
@@ -52,7 +54,7 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
           setError('Invalid QR code format. Expected chip ID format: PXXXXX');
         }
       },
-      (error) => {
+      (error: string) => {
         console.warn('QR Code scanning error:', error);
       }
     );

@@ -15,23 +15,30 @@ export default defineConfig({
     }),
   ],
   build: {
+    outDir: 'dist',
+    sourcemap: false,
     minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    },
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
+      external: ['html5-qrcode'],
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          charts: ['chart.js', 'd3'],
-        }
-      }
+        globals: {
+          'html5-qrcode': 'Html5Qrcode'
+        },
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        },
+      },
     },
-    sourcemap: true,
-    chunkSizeWarningLimit: 1000,
-    reportCompressedSize: false
-  }
+  },
+  optimizeDeps: {
+    include: ['html5-qrcode']
+  },
+  server: {
+    port: 3000,
+    strictPort: true,
+    host: true,
+  },
 })

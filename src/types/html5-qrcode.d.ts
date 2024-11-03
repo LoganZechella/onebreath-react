@@ -1,14 +1,11 @@
-declare module 'html5-qrcode' {
-  export class Html5QrcodeScanner {
+declare global {
+  class Html5QrcodeScanner {
     constructor(
       elementId: string,
       config: {
         fps: number;
         qrbox: { width: number; height: number };
         aspectRatio?: number;
-        showTorchButtonIfSupported?: boolean;
-        showZoomSliderIfSupported?: boolean;
-        defaultZoomValueIfSupported?: number;
         videoConstraints?: {
           facingMode?: { ideal: string };
         };
@@ -23,4 +20,6 @@ declare module 'html5-qrcode' {
     pause(): void;
     resume(): void;
   }
-} 
+}
+
+export {}; 
