@@ -5,7 +5,7 @@ load_dotenv()
 
 class Config:
     # Flask Configuration
-    FLASK_PORT = int(os.getenv('FLASK_PORT', 5000))
+    FLASK_PORT = int(os.getenv('PORT', 5000))
     
     # Mail Configuration
     MAIL_SERVER = 'smtp.gmail.com'
