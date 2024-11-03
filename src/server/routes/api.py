@@ -177,7 +177,7 @@ def download_dataset():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@api.route('/api/completed_samples', methods=['GET'])
+@api.route('/completed_samples', methods=['GET'])
 def get_completed_samples():
     from ..main import collection
     all_samples = collection.find({"status": "Complete"}, {"_id": 0})
