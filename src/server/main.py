@@ -7,7 +7,7 @@ from google.cloud import storage
 from pymongo import MongoClient
 from openai import OpenAI
 import logging
-from .config import Config
+from src.server.config import Config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
