@@ -17,6 +17,8 @@ api.interceptors.request.use(async (config) => {
     const token = await user.getIdToken();
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Ensure the Origin header is set
+  config.headers['Origin'] = 'https://onebreathpilotv2.netlify.app';
   return config;
 }, (error) => {
   return Promise.reject(error);

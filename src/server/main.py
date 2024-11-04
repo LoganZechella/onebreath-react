@@ -16,19 +16,24 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "https://onebreathpilotv2.netlify.app",  # Production frontend
-            "http://localhost:3000",  # Local development
-            "https://localhost:3000"  # Local development with HTTPS
-        ],
-        "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
-        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Origin"],
-        "expose_headers": ["Content-Range", "X-Content-Range"],
-        "supports_credentials": True
-    }
-})
+CORS(app, 
+     resources={r"/*": {
+         "origins": ["https://onebreathpilotv2.netlify.app"],
+         "methods": ["GET", "POST", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization"],
+         "supports_credentials": True,
+         "expose_headers": ["Content-Range", "X-Content-Range"],
+         "max_age": 600  # Cache preflight requests for 10 minutes
+     }})
+
+# Add CORS headers to all responses
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 # Initialize Flask-Mail
 mail = Mail(app)
