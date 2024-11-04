@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { auth } from './firebase';
-import { Sample } from '../types';
+import { Sample, AnalyzedSample } from '../types';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -17,9 +17,11 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
-// Add response interceptor to handle auth errors
+// Add response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -72,9 +74,18 @@ export const sampleService = {
     }
   },
 
-  getAnalyzedSamples: async () => {
-    const response = await api.get('/analyzed');
-    return response.data;
+  getAnalyzedSamples: async (): Promise<AnalyzedSample[]> => {
+    try {
+      const response = await api.get('/analyzed');
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching analyzed samples:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        // Handle unauthorized error
+        window.location.href = '/login';
+      }
+      return [];
+    }
   },
 
   getAIAnalysis: async () => {

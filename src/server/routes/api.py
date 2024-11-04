@@ -244,14 +244,14 @@ def upload_document_metadata():
 @api.route('/analyzed', methods=['GET'])
 @require_auth
 def get_analyzed_samples():
-    from ..main import analyzed_collection
     try:
+        from ..main import analyzed_collection
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}).sort("timestamp", 1))
         analyzed_samples = [convert_decimal128(sample) for sample in analyzed_samples]
         return jsonify(analyzed_samples), 200
     except Exception as e:
         print(f"Error fetching analyzed samples: {str(e)}")
-        return jsonify([]), 200  # Return empty array instead of error
+        return jsonify([]), 200
 
 @api.route('/ai_analysis', methods=['GET'])
 @require_auth
