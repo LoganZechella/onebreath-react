@@ -4,6 +4,7 @@ import Modal from '../common/Modal';
 
 interface SampleRegistrationFormProps {
   isOpen: boolean;
+  chipId: string;
   onClose: () => void;
   onSubmit: (sampleData: {
     chip_id: string;

@@ -45,7 +45,16 @@ export default {
           DEFAULT: '#ffffff',
           dark: '#1a1a1a',
         }
-      }
+      },
+      animation: {
+        'scanner-line': 'scanner-line 2s linear infinite',
+      },
+      keyframes: {
+        'scanner-line': {
+          '0%, 100%': { top: '0%' },
+          '50%': { top: '100%' },
+        },
+      },
     },
   },
   plugins: [],
