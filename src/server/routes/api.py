@@ -250,7 +250,8 @@ def get_analyzed_samples():
         analyzed_samples = [convert_decimal128(sample) for sample in analyzed_samples]
         return jsonify(analyzed_samples), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error fetching analyzed samples: {str(e)}")
+        return jsonify([]), 200  # Return empty array instead of error
 
 @api.route('/ai_analysis', methods=['GET'])
 @require_auth
