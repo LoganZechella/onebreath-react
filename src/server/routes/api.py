@@ -262,7 +262,8 @@ def ai_analysis():
         response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-        return response
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 200  # Return 200 status for OPTIONS
 
     from ..main import analyzed_collection, openai_client
     try:
@@ -314,10 +315,7 @@ def ai_analysis():
         )
         
         response = jsonify({"success": True, "insights": assistant_response})
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
         return response, 200
     except Exception as e:
         print(f"AI Analysis Error: {str(e)}")  # Add better error logging
-        error_response = jsonify({"success": False, "error": str(e)})
-        error_response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        return error_response, 500
+        return jsonify({"success": False, "error": str(e)}), 500
