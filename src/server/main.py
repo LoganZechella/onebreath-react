@@ -19,11 +19,14 @@ app.config.from_object(Config)
 CORS(app, resources={
     r"/*": {
         "origins": [
-            "https://onebreathpilotv2.netlify.app",
-            "http://localhost:3000"  # for local development
+            "https://onebreathpilotv2.netlify.app",  # Production frontend
+            "http://localhost:3000",  # Local development
+            "https://localhost:3000"  # Local development with HTTPS
         ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
+        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Origin"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
     }
 })
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, request, jsonify, Response, make_response
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import pytz
@@ -253,9 +253,17 @@ def get_analyzed_samples():
         print(f"Error fetching analyzed samples: {str(e)}")
         return jsonify([]), 200
 
-@api.route('/ai_analysis', methods=['GET'])
+@api.route('/ai_analysis', methods=['GET', 'OPTIONS'])
 @require_auth
 def ai_analysis():
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        return response
+
     from ..main import analyzed_collection, openai_client
     try:
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
@@ -305,7 +313,11 @@ def ai_analysis():
             "No insights generated"  # Default response if no assistant message found
         )
         
-        return jsonify({"success": True, "insights": assistant_response}), 200
+        response = jsonify({"success": True, "insights": assistant_response})
+        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        return response, 200
     except Exception as e:
         print(f"AI Analysis Error: {str(e)}")  # Add better error logging
-        return jsonify({"success": False, "error": str(e)}), 500
+        error_response = jsonify({"success": False, "error": str(e)})
+        error_response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        return error_response, 500
