@@ -106,11 +106,17 @@ export default function DataViewer() {
 
     const fetchAnalyzedSamples = async () => {
       try {
+        setLoading(true);
         const response = await fetch(`${import.meta.env.VITE_API_URL}/analyzed`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
-        setSamples(data);
+        // Ensure data is an array before setting state
+        setSamples(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching analyzed samples:', error);
+        setSamples([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
@@ -149,6 +155,13 @@ export default function DataViewer() {
     yField: string, 
     aggregationField: string
   ): ProcessedData => {
+    // Guard against empty samples
+    if (!Array.isArray(samples) || samples.length === 0) {
+      return chartType === 'boxplot' 
+        ? { labels: [], data: [] } 
+        : { labels: [], data: [] };
+    }
+
     if (chartType === 'boxplot') {
       // Process data for boxplot
       const processedData: BoxPlotData = { labels: [], data: [] };
@@ -200,26 +213,30 @@ export default function DataViewer() {
 
       if (aggregationField === 'none') {
         samples.forEach(sample => {
-          const xValue = formatFieldValue(sample[xField as keyof AnalyzedSample], xField);
-          const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
+          if (sample && typeof sample === 'object') {
+            const xValue = formatFieldValue(sample[xField as keyof AnalyzedSample], xField);
+            const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
 
-          if (!isNaN(yValue)) {
-            processedData.labels.push(xValue);
-            processedData.data.push(yValue);
+            if (!isNaN(yValue)) {
+              processedData.labels.push(xValue);
+              processedData.data.push(yValue);
+            }
           }
         });
       } else {
         const aggregatedData: Record<string, number[]> = {};
         
         samples.forEach(sample => {
-          const key = String(sample[aggregationField as keyof AnalyzedSample]);
-          const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
+          if (sample && typeof sample === 'object') {
+            const key = String(sample[aggregationField as keyof AnalyzedSample]);
+            const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
 
-          if (!isNaN(yValue)) {
-            if (!aggregatedData[key]) {
-              aggregatedData[key] = [];
+            if (!isNaN(yValue)) {
+              if (!aggregatedData[key]) {
+                aggregatedData[key] = [];
+              }
+              aggregatedData[key].push(yValue);
             }
-            aggregatedData[key].push(yValue);
           }
         });
 
@@ -467,7 +484,11 @@ export default function DataViewer() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
