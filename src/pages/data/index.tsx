@@ -4,26 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Chart from 'chart.js/auto';
 import * as d3 from 'd3';
 import AIInsightsModal from '../../components/data/AIInsightsModal';
-
-interface AnalyzedSample {
-  chip_id: string;
-  batch_number?: number;
-  mfg_date?: string;
-  location?: string;
-  timestamp: string;
-  patient_id: string;
-  average_co2: number;
-  final_volume: number;
-  status?: string;
-  'Pentanal': number;
-  'Decanal': number;
-  '2-Butanone': number;
-  '2-hydroxy-acetaldehyde': number;
-  '2-hydroxy-3-butanone': number;
-  '4-HHE': number;
-  '4HNE': number;
-  'Dx': string;
-}
+import { sampleService } from '../../services/api';
+import { AnalyzedSample } from '../../types';
 
 interface ChartData {
   labels: string[];
@@ -107,16 +89,11 @@ export default function DataViewer() {
     const fetchAnalyzedSamples = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/analyzed`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        // Ensure data is an array before setting state
+        const data = await sampleService.getAnalyzedSamples();
         setSamples(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching analyzed samples:', error);
-        setSamples([]); // Set empty array on error
+        setSamples([]);
       } finally {
         setLoading(false);
       }
