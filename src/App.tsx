@@ -1,8 +1,10 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Dashboard from './pages/dashboard/index';
-import Completed from './pages/completed/index';
-import DataViewer from './pages/data/index';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Dashboard from './pages/dashboard';
+import Completed from './pages/completed';
+import DataViewer from './pages/data';
+import Login from './pages/login';
 import Layout from './components/layout/Layout';
 
 function App() {
@@ -10,10 +12,25 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/login" element={<Login />} />
           <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/completed" element={<Completed />} />
-            <Route path="/data" element={<DataViewer />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/completed" element={
+              <ProtectedRoute>
+                <Completed />
+              </ProtectedRoute>
+            } />
+            <Route path="/data" element={
+              <ProtectedRoute>
+                <DataViewer />
+              </ProtectedRoute>
+            } />
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </AuthProvider>
