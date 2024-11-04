@@ -11,8 +11,26 @@ from src.server.utils.helpers import send_email, send_sms, convert_decimal128, b
 from src.server.config import Config
 import json
 import time
+from functools import wraps
 
 api = Blueprint('api', __name__)
+
+def require_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'No token provided'}), 401
+        
+        token = auth_header.split('Bearer ')[1]
+        try:
+            decoded_token = auth.verify_id_token(token)
+            request.user = decoded_token
+            return f(*args, **kwargs)
+        except Exception as e:
+            return jsonify({'error': 'Invalid token'}), 401
+            
+    return decorated_function
 
 @api.route('/api/auth/signin', methods=['POST'])
 def signin():
@@ -36,6 +54,7 @@ def google_sign_in():
                        'details': str(e)}), 401
 
 @api.route('/samples', methods=['GET'])
+@require_auth
 def get_samples():
     from ..main import collection
     statuses = ["In Process", "Ready for Pickup", 
@@ -49,6 +68,7 @@ def get_samples():
     return jsonify(samples), 200 
 
 @api.route('/update_sample', methods=['POST'])
+@require_auth
 def update_sample():
     from ..main import collection
     try:
@@ -80,6 +100,7 @@ def update_sample():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/update_patient_info', methods=['POST'])
+@require_auth
 def update_patient_info():
     from ..main import collection
     try:
@@ -100,6 +121,7 @@ def update_patient_info():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @api.route('/generate_presigned_url', methods=['POST'])
+@require_auth
 def generate_presigned_url():
     from ..main import bucket
     try:
@@ -116,6 +138,7 @@ def generate_presigned_url():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/upload_from_memory', methods=['POST'])
+@require_auth
 def upload_from_memory():
     from ..main import bucket
     try:
@@ -134,6 +157,7 @@ def upload_from_memory():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/download_dataset', methods=['GET'])
+@require_auth
 def download_dataset():
     from ..main import collection
     try:
@@ -178,6 +202,7 @@ def download_dataset():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/completed_samples', methods=['GET'])
+@require_auth
 def get_completed_samples():
     from ..main import collection
     try:
@@ -191,6 +216,7 @@ def get_completed_samples():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/upload_document_metadata', methods=['POST'])
+@require_auth
 def upload_document_metadata():
     from ..main import collection
     try:
@@ -216,6 +242,7 @@ def upload_document_metadata():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/analyzed', methods=['GET'])
+@require_auth
 def get_analyzed_samples():
     from ..main import analyzed_collection
     try:
@@ -226,6 +253,7 @@ def get_analyzed_samples():
         return jsonify({"error": str(e)}), 500
 
 @api.route('/ai_analysis', methods=['GET'])
+@require_auth
 def ai_analysis():
     from ..main import analyzed_collection, openai_client
     try:

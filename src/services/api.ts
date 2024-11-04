@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { auth } from './firebase';
 import { Sample } from '../types';
 
 const api = axios.create({
@@ -7,6 +8,28 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Add auth interceptor
+api.interceptors.request.use(async (config) => {
+  const user = auth.currentUser;
+  if (user) {
+    const token = await user.getIdToken();
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add response interceptor to handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Redirect to login on auth error
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 interface SampleRegistrationData {
   chip_id: string;
