@@ -17,6 +17,13 @@ api.interceptors.request.use(async (config) => {
     const token = await user.getIdToken();
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Ensure OPTIONS requests are handled properly
+  if (config.method === 'options') {
+    config.headers['Access-Control-Request-Method'] = 'GET';
+    config.headers['Access-Control-Request-Headers'] = 'authorization,content-type';
+  }
+  
   return config;
 }, (error) => {
   return Promise.reject(error);

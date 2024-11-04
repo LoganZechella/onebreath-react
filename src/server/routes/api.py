@@ -18,6 +18,10 @@ api = Blueprint('api', __name__)
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Skip auth check for OPTIONS requests
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+            
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
             return jsonify({'error': 'No token provided'}), 401
@@ -265,8 +269,8 @@ def ai_analysis():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 200  # Return 200 status for OPTIONS
 
-    from ..main import analyzed_collection, openai_client
     try:
+        from ..main import analyzed_collection, openai_client
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         
         def convert_sample(sample):
@@ -315,7 +319,12 @@ def ai_analysis():
         )
         
         response = jsonify({"success": True, "insights": assistant_response})
+        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 200
     except Exception as e:
-        print(f"AI Analysis Error: {str(e)}")  # Add better error logging
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"AI Analysis Error: {str(e)}")
+        error_response = jsonify({"success": False, "error": str(e)})
+        error_response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        error_response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return error_response, 500
