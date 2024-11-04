@@ -262,12 +262,7 @@ def get_analyzed_samples():
 def ai_analysis():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 200  # Return 200 status for OPTIONS
+        return make_response(), 200  # Return 200 status for OPTIONS
 
     try:
         from ..main import analyzed_collection, openai_client
@@ -318,13 +313,7 @@ def ai_analysis():
             "No insights generated"  # Default response if no assistant message found
         )
         
-        response = jsonify({"success": True, "insights": assistant_response})
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 200
+        return jsonify({"success": True, "insights": assistant_response}), 200
     except Exception as e:
         print(f"AI Analysis Error: {str(e)}")
-        error_response = jsonify({"success": False, "error": str(e)})
-        error_response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        error_response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return error_response, 500
+        return jsonify({"success": False, "error": str(e)}), 500
