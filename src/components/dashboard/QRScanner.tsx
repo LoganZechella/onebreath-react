@@ -193,8 +193,8 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
       {showRegistrationForm ? (
         <SampleRegistrationForm
           isOpen={showRegistrationForm}
-          chipId={scannedChipId!}
-          initialChipId={scannedChipId!}
+          chipId={scannedChipId || ''}
+          initialChipId={scannedChipId || ''}
           onClose={() => {
             setShowRegistrationForm(false);
             onClose();
