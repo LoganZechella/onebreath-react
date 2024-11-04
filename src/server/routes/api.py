@@ -271,19 +271,24 @@ def ai_analysis():
         analyzed_samples = [convert_sample(sample) for sample in analyzed_samples]
         data_summary = json.dumps(analyzed_samples[:10])
         
+        # Create a new thread for this analysis
         thread = openai_client.beta.threads.create()
 
+        # Create a message in the thread with the data
         message = openai_client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
             content=f"Analyze this breath analysis data and provide insights: {data_summary}"
         )
 
+        # Create and run the assistant
         run = openai_client.beta.threads.runs.create(
             thread_id=thread.id,
-            assistant_id=Config.ASSISTANT_ID
+            assistant_id=Config.ASSISTANT_ID,
+            model="gpt-4-turbo-preview"  # Explicitly specify the model
         )
 
+        # Wait for the run to complete
         while run.status != "completed":
             time.sleep(1)
             run = openai_client.beta.threads.runs.retrieve(
@@ -291,13 +296,16 @@ def ai_analysis():
                 run_id=run.id
             )
 
+        # Get the assistant's response
         messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
         assistant_response = next(
-            msg.content[0].text.value 
-            for msg in messages 
-            if msg.role == "assistant"
+            (msg.content[0].text.value 
+             for msg in messages 
+             if msg.role == "assistant"),
+            "No insights generated"  # Default response if no assistant message found
         )
         
         return jsonify({"success": True, "insights": assistant_response}), 200
     except Exception as e:
+        print(f"AI Analysis Error: {str(e)}")  # Add better error logging
         return jsonify({"success": False, "error": str(e)}), 500
