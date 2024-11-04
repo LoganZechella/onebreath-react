@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sampleService } from '../../services/api';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -14,8 +15,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai_analysis`);
-      const data = await response.json();
+      const data = await sampleService.getAIAnalysis();
       if (data.success) {
         setInsights(formatInsights(data.insights));
       } else {
@@ -23,6 +23,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Error fetching insights:', error);
     } finally {
       setLoading(false);
     }
