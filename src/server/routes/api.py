@@ -276,11 +276,7 @@ def generate_data_hash(data):
 @require_auth
 def ai_analysis():
     if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-        return response, 200
+        return '', 200
 
     try:
         from ..main import analyzed_collection, openai_client
@@ -373,24 +369,20 @@ def ai_analysis():
         # Cache the result
         get_cached_analysis.cache_set(data_hash, response_content)
 
-        # Add CORS headers to successful response
-        response = jsonify({
+        # Return response without manually adding CORS headers
+        return jsonify({
             "success": True,
             "insights": response_content,
             "cached": False,
             "sampleCount": len(analyzed_samples)
-        })
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        return response, 200
+        }), 200
 
     except TimeoutError as e:
         logger.error(f"AI Analysis Timeout: {str(e)}")
-        response = jsonify({
+        return jsonify({
             "success": False,
             "error": f"Analysis timed out after {TIMEOUT_SECONDS} seconds"
-        })
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        return response, 504
+        }), 504
     except Exception as e:
         logger.error(f"AI Analysis Error: {str(e)}")
         return jsonify({

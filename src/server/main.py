@@ -28,17 +28,6 @@ CORS(app,
      allow_headers=["Content-Type", "Authorization"],
      supports_credentials=True)
 
-# Add CORS headers to all responses
-@app.after_request
-def after_request(response):
-    if request.method == 'OPTIONS':
-        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Max-Age', '600')
-    return response
-
 # Initialize Flask-Mail
 mail = Mail(app)
 
