@@ -276,11 +276,18 @@ def generate_data_hash(data):
 @require_auth
 def ai_analysis():
     if request.method == 'OPTIONS':
-        return make_response(), 200
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        return response, 200
 
     try:
         from ..main import analyzed_collection, openai_client
-
+        
+        # Reduce timeout to 25 seconds to stay within worker timeout
+        TIMEOUT_SECONDS = 25
+        
         # Fetch and validate samples
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         if not analyzed_samples:
@@ -332,9 +339,9 @@ def ai_analysis():
         # Wait for completion with timeout
         start_time = time.time()
         while True:
-            if time.time() - start_time > 30:
-                raise TimeoutError("Analysis timed out after 30 seconds")
-
+            if time.time() - start_time > TIMEOUT_SECONDS:
+                raise TimeoutError(f"Analysis timed out after {TIMEOUT_SECONDS} seconds")
+            
             run_status = openai_client.beta.threads.runs.retrieve(
                 thread_id=thread.id,
                 run_id=run.id
@@ -345,7 +352,7 @@ def ai_analysis():
             elif run_status.status == "failed":
                 raise Exception(f"Assistant run failed: {run_status.last_error}")
             
-            time.sleep(1)
+            time.sleep(0.5)  # Reduced sleep time
 
         # Get the assistant's response
         messages = openai_client.beta.threads.messages.list(
@@ -366,19 +373,24 @@ def ai_analysis():
         # Cache the result
         get_cached_analysis.cache_set(data_hash, response_content)
 
-        return jsonify({
+        # Add CORS headers to successful response
+        response = jsonify({
             "success": True,
             "insights": response_content,
             "cached": False,
             "sampleCount": len(analyzed_samples)
-        }), 200
+        })
+        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        return response, 200
 
     except TimeoutError as e:
         logger.error(f"AI Analysis Timeout: {str(e)}")
-        return jsonify({
+        response = jsonify({
             "success": False,
-            "error": "Analysis timed out after 30 seconds"
-        }), 504
+            "error": f"Analysis timed out after {TIMEOUT_SECONDS} seconds"
+        })
+        response.headers.add('Access-Control-Allow-Origin', 'https://onebreathpilotv2.netlify.app')
+        return response, 504
     except Exception as e:
         logger.error(f"AI Analysis Error: {str(e)}")
         return jsonify({
