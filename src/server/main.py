@@ -23,8 +23,10 @@ CORS(app,
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
          "expose_headers": ["Content-Range", "X-Content-Range"],
-         "max_age": 600  # Cache preflight requests for 10 minutes
-     }})
+         "max_age": 600
+     }},
+     allow_headers=["Content-Type", "Authorization"],
+     supports_credentials=True)
 
 # Add CORS headers to all responses
 @app.after_request
