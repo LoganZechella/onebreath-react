@@ -12,6 +12,9 @@ from src.server.config import Config
 import json
 import time
 from functools import wraps
+from functools import lru_cache
+import hashlib
+from concurrent.futures import TimeoutError
 
 api = Blueprint('api', __name__)
 
@@ -257,63 +260,106 @@ def get_analyzed_samples():
         print(f"Error fetching analyzed samples: {str(e)}")
         return jsonify([]), 200
 
+# Cache for storing analysis results
+@lru_cache(maxsize=128)
+def get_cached_analysis(data_hash):
+    return None
+
+def generate_data_hash(data):
+    """Generate a hash of the analyzed samples data for cache comparison"""
+    return hashlib.md5(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
 @api.route('/ai_analysis', methods=['GET', 'OPTIONS'])
 @require_auth
 def ai_analysis():
-    # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
-        return make_response(), 200  # Return 200 status for OPTIONS
+        return make_response(), 200
 
     try:
         from ..main import analyzed_collection, openai_client
+
+        # Fetch all analyzed samples (no limit)
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         
-        def convert_sample(sample):
-            for key, value in sample.items():
-                if isinstance(value, Decimal128):
-                    sample[key] = float(value.to_decimal())
-                elif isinstance(value, datetime):
-                    sample[key] = value.isoformat()
-            return sample
+        # Preprocess the data
+        processed_samples = [convert_sample(sample) for sample in analyzed_samples]
         
-        analyzed_samples = [convert_sample(sample) for sample in analyzed_samples]
-        data_summary = json.dumps(analyzed_samples[:10])
+        # Generate hash of processed data
+        data_hash = generate_data_hash(processed_samples)
         
-        # Create a new thread for this analysis
-        thread = openai_client.beta.threads.create()
+        # Check cache first
+        cached_result = get_cached_analysis(data_hash)
+        if cached_result:
+            return jsonify({"success": True, "insights": cached_result, "cached": True}), 200
 
-        # Create a message in the thread with the data
+        # Prepare data for Synopsis GPT
+        data_summary = json.dumps(processed_samples)
+        
+        # Create thread and message
+        thread = openai_client.beta.threads.create()
         message = openai_client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content=f"Analyze this breath analysis data and provide insights: {data_summary}"
+            content=f"Analyze the following breath analysis dataset: {data_summary}"
         )
 
-        # Create and run the assistant
+        # Run the assistant with timeout
         run = openai_client.beta.threads.runs.create(
             thread_id=thread.id,
-            assistant_id=Config.ASSISTANT_ID,
-            model="gpt-4-turbo-preview"  # Explicitly specify the model
+            assistant_id=Config.ASSISTANT_ID
         )
 
-        # Wait for the run to complete
-        while run.status != "completed":
+        # Wait for completion with timeout
+        start_time = time.time()
+        while run.status not in ["completed", "failed"]:
+            if time.time() - start_time > 30:  # 30 second timeout
+                raise TimeoutError("Analysis timed out after 30 seconds")
+            
             time.sleep(1)
             run = openai_client.beta.threads.runs.retrieve(
-                thread_id=thread.id, 
+                thread_id=thread.id,
                 run_id=run.id
             )
 
-        # Get the assistant's response
+        if run.status == "failed":
+            raise Exception("Assistant run failed")
+
+        # Get response
         messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
         assistant_response = next(
             (msg.content[0].text.value 
              for msg in messages 
              if msg.role == "assistant"),
-            "No insights generated"  # Default response if no assistant message found
+            "No insights generated"
         )
+
+        # Cache the successful response
+        get_cached_analysis.cache_set(data_hash, assistant_response)
         
-        return jsonify({"success": True, "insights": assistant_response}), 200
+        return jsonify({
+            "success": True, 
+            "insights": assistant_response,
+            "cached": False
+        }), 200
+
+    except TimeoutError as e:
+        print(f"AI Analysis Timeout: {str(e)}")
+        return jsonify({
+            "success": False, 
+            "error": "Analysis timed out after 30 seconds"
+        }), 504
     except Exception as e:
         print(f"AI Analysis Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+def convert_sample(sample):
+    """Convert MongoDB types to JSON-serializable formats"""
+    converted = {}
+    for key, value in sample.items():
+        if isinstance(value, Decimal128):
+            converted[key] = float(value.to_decimal())
+        elif isinstance(value, datetime):
+            converted[key] = value.isoformat()
+        else:
+            converted[key] = value
+    return converted
