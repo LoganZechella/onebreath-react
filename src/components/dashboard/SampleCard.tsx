@@ -37,7 +37,7 @@ export default function SampleCard({ sample, onUpdateStatus }: SampleCardProps) 
           {sample.status === 'Ready for Pickup' && (
             <button
               onClick={() => handleStatusChange('Picked up. Ready for Analysis')}
-              className="px-3 py-1 text-sm bg-secondary-light text-secondary-dark rounded-full hover:bg-secondary-dark hover:text-white transition-colors"
+              className="px-3 py-1 text-sm bg-accent-dark text-white rounded-full hover:bg-accent-light hover:text-accent-dark transition-colors font-bold"
             >
               Pickup
             </button>
