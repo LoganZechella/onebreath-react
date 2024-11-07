@@ -31,7 +31,7 @@ export default function SampleCard({ sample, onUpdateStatus }: SampleCardProps) 
               onClick={() => handleStatusChange('Ready for Pickup')}
               className="px-3 py-1 text-sm bg-accent-light text-accent-dark rounded-full hover:bg-accent-dark hover:text-white transition-colors"
             >
-              Mark Ready
+              &#10004;
             </button>
           )}
           {sample.status === 'Ready for Pickup' && (
@@ -39,7 +39,7 @@ export default function SampleCard({ sample, onUpdateStatus }: SampleCardProps) 
               onClick={() => handleStatusChange('Picked up. Ready for Analysis')}
               className="px-3 py-1 text-sm bg-secondary-light text-secondary-dark rounded-full hover:bg-secondary-dark hover:text-white transition-colors"
             >
-              Mark Picked Up
+              Pickup
             </button>
           )}
         </div>
