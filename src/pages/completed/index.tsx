@@ -42,14 +42,13 @@ export default function CompletedSamples() {
       const a = document.createElement('a');
       a.href = url;
       const timestamp = new Date().toISOString().split('T')[0];
-      a.download = `completed_samples_${timestamp}.xlsx`;
-      document.body.appendChild(a);
+      a.download = `completed_samples_${timestamp}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
     } catch (err) {
-      setError('Failed to download dataset');
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to download dataset';
+      setError(errorMessage);
+      console.error('Error downloading dataset:', err);
     } finally {
       setIsDownloading(false);
     }

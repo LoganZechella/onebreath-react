@@ -556,3 +556,8 @@ def download_samples():
             "success": False,
             "error": str(e)
         }), 500
+
+@api.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com"
+    return response
