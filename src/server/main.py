@@ -19,7 +19,7 @@ app.config.from_object(Config)
 CORS(app, 
      resources={r"/*": {
          "origins": ["https://onebreathpilotv2.netlify.app"],
-         "methods": ["GET", "POST", "OPTIONS"],
+         "methods": ["GET", "POST", "PUT", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
          "expose_headers": ["Content-Range", "X-Content-Range"],

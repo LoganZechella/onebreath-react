@@ -401,3 +401,54 @@ def convert_sample(sample):
         else:
             converted[key] = value
     return converted
+
+@api.route('/samples/<chip_id>/pickup', methods=['PUT'])
+@require_auth
+def update_sample_pickup(chip_id):
+    from ..main import collection
+    try:
+        data = request.json
+        required_fields = ['status', 'location', 'average_co2', 'final_volume']
+        
+        if not all(field in data for field in required_fields):
+            return jsonify({
+                "success": False,
+                "error": f"Missing required fields. Required: {required_fields}"
+            }), 400
+
+        update_data = {
+            "status": data['status'],
+            "location": data['location'],
+            "average_co2": data['average_co2'],
+            "final_volume": data['final_volume']
+        }
+
+        # Add error field if present
+        if 'error' in data:
+            update_data['error'] = data['error']
+
+        update_result = collection.update_one(
+            {"chip_id": chip_id},
+            {"$set": update_data}
+        )
+
+        if update_result.modified_count == 1:
+            if data['status'] == "Picked up. Ready for Analysis":
+                subject = f"Sample Picked Up: {chip_id}"
+                body = (f"Sample with chip ID {chip_id} has been picked up at {data['location']}.\n"
+                       f"Final Volume: {data['final_volume']} mL\n"
+                       f"Average CO2: {data['average_co2']}%")
+                send_email(subject, body)
+            return jsonify({"success": True}), 200
+            
+        return jsonify({
+            "success": False,
+            "error": "Sample not found"
+        }), 404
+
+    except Exception as e:
+        logger.error(f"Error updating sample pickup data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
