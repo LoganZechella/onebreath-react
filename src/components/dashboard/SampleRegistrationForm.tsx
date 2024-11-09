@@ -179,8 +179,8 @@ export default function SampleRegistrationForm({
                          dark:text-white transition-colors duration-200 appearance-none"
               >
                 <option value="">Select Sample Type</option>
-                <option value="positive control">Positive Control</option>
-                <option value="negative control">Negative Control</option>
+                <option value="LC Positive">LC Positive</option>
+                <option value="LC Negative">LC Negative</option>
               </select>
             </div>
 
