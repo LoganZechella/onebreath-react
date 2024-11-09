@@ -32,3 +32,9 @@ export interface AnalyzedSample {
   '4HNE': number;
   'Dx': string;
 } 
+
+export interface PickupData {
+  volume: number;
+  co2_level: number;
+  error?: string;
+}

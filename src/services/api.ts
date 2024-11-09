@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { auth } from './firebase';
-import { Sample, AnalyzedSample } from '../types';
+import { Sample, AnalyzedSample, PickupData } from '../types';
 
 const api = axios.create({
   baseURL: 'https://onebreath-react.onrender.com',
@@ -128,6 +128,25 @@ export const sampleService = {
     }
     return response.data;
   },
+
+  updateSampleWithPickupData: async (
+    chipId: string, 
+    status: string, 
+    location: string, 
+    pickupData: PickupData
+  ): Promise<void> => {
+    const response = await api.put(`/samples/${chipId}/pickup`, {
+      status,
+      location,
+      average_co2: pickupData.co2_level,
+      final_volume: pickupData.volume,
+      ...(pickupData.error && { error: pickupData.error })
+    });
+
+    if (!response.data.success) {
+      throw new Error('Failed to update sample with pickup data');
+    }
+  },
 };
 
 export const authService = {
@@ -139,5 +158,24 @@ export const authService = {
   googleSignIn: async (idToken: string) => {
     const response = await api.post('/auth/googleSignIn', { idToken });
     return response.data;
+  }
+};
+
+export const updateSampleWithPickupData = async (
+  chipId: string,
+  status: string,
+  location: string,
+  pickupData: PickupData
+): Promise<void> => {
+  const response = await api.put(`/samples/${chipId}/pickup`, {
+    status,
+    location,
+    average_co2: pickupData.co2_level,
+    final_volume: pickupData.volume,
+    ...(pickupData.error && { error: pickupData.error })
+  });
+
+  if (!response.data.success) {
+    throw new Error('Failed to update sample with pickup data');
   }
 }; 
