@@ -6,9 +6,10 @@ import { updateSampleWithPickupData } from '../../services/api';
 interface SampleCardProps {
   sample: Sample;
   onUpdateStatus: (chipId: string, status: string, location: string) => Promise<void>;
+  onPickupComplete?: () => Promise<void>;
 }
 
-export default function SampleCard({ sample, onUpdateStatus }: SampleCardProps) {
+export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }: SampleCardProps) {
   const [showPickupForm, setShowPickupForm] = useState(false);
 
   const handleStatusChange = async (newStatus: string) => {
@@ -39,6 +40,9 @@ export default function SampleCard({ sample, onUpdateStatus }: SampleCardProps) 
       );
       
       setShowPickupForm(false);
+      if (onPickupComplete) {
+        await onPickupComplete();
+      }
     } catch (error) {
       console.error('Error processing pickup:', error);
     }
