@@ -108,10 +108,12 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
             )}
           </div>
         </div>
-        <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-          <p>Started: {sample.timestamp ? formatStartTime(sample.timestamp) : 'Not started'}</p>
-          {sample.timestamp && <CountdownTimer timestamp={sample.timestamp} />}
-        </div>
+        {sample.status === 'In Process' && (
+          <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+            <p>Started: {sample.timestamp ? formatStartTime(sample.timestamp) : 'Not started'}</p>
+            {sample.timestamp && <CountdownTimer timestamp={sample.timestamp} />}
+          </div>
+        )}
       </div>
 
       <PickupForm
