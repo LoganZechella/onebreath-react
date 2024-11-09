@@ -189,27 +189,25 @@ def download_dataset():
         # Write data
         for sample in samples:
             try:
-                timestamp = datetime.fromisoformat(sample['timestamp'].replace('Z', '+00:00'))
+                # Format timestamp
+                timestamp = datetime.fromisoformat(str(sample['timestamp']).replace('Z', '+00:00'))
                 formatted_date = timestamp.strftime('%m/%d/%y')
                 
-                # Format numeric values
-                final_volume = sample.get('final_volume')
-                if isinstance(final_volume, str):
-                    final_volume = final_volume.replace('mL', '').strip()
-                
-                avg_co2 = sample.get('average_co2')
-                if isinstance(avg_co2, str):
-                    avg_co2 = avg_co2.replace('%', '').strip()
+                # Format manufacturing date
+                mfg_date = sample.get('mfg_date')
+                if mfg_date:
+                    mfg_date = datetime.fromisoformat(str(mfg_date).replace('Z', '+00:00'))
+                    mfg_date = mfg_date.strftime('%m/%d/%y')
                 
                 writer.writerow([
                     formatted_date,
-                    sample['chip_id'],
+                    sample.get('chip_id', 'N/A'),
                     sample.get('patient_id', 'N/A'),
                     sample.get('sample_type', 'N/A'),
                     sample.get('batch_number', 'N/A'),
-                    sample.get('mfg_date', 'N/A'),
-                    final_volume if final_volume else 'N/A',
-                    avg_co2 if avg_co2 else 'N/A',
+                    mfg_date if mfg_date else 'N/A',
+                    f"{sample.get('final_volume', 'N/A')}",
+                    f"{sample.get('average_co2', 'N/A')}",
                     sample.get('error', 'N/A')
                 ])
             except Exception as e:
