@@ -6,7 +6,7 @@ import CountdownTimer from './CountdownTimer';
 
 interface SampleCardProps {
   sample: Sample;
-  onUpdateStatus: (chipId: string, status: string, location: string) => Promise<void>;
+  onUpdateStatus: (chipId: string, status: string, sampleType: string) => Promise<void>;
   onPickupComplete?: () => Promise<void>;
 }
 
@@ -21,7 +21,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
       } else if (newStatus === 'Complete') {
         setShowCompleteConfirm(true);
       } else {
-        await onUpdateStatus(sample.chip_id, newStatus, sample.location || '');
+        await onUpdateStatus(sample.chip_id, newStatus, sample.sample_type || '');
       }
     } catch (error) {
       console.error('Error updating sample status:', error);
@@ -39,7 +39,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
       await updateSampleWithPickupData(
         chipId,
         'Picked up. Ready for Analysis',
-        sample.location || '',
+        sample.sample_type || '',
         pickupData
       );
       
@@ -54,7 +54,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
 
   const handleCompleteConfirm = async () => {
     try {
-      await onUpdateStatus(sample.chip_id, 'Complete', sample.location || '');
+      await onUpdateStatus(sample.chip_id, 'Complete', sample.sample_type || '');
       setShowCompleteConfirm(false);
     } catch (error) {
       console.error('Error completing sample:', error);
@@ -78,7 +78,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
               {sample.chip_id}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-300">
-              Location: {sample.location || 'Not specified'}
+              Sample Type: {sample.sample_type || 'Not specified'}
             </p>
           </div>
           <div className="flex space-x-2">

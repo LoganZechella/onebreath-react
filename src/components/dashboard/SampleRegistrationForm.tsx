@@ -9,7 +9,7 @@ interface SampleRegistrationFormProps {
   onSubmit: (sampleData: {
     chip_id: string;
     patient_id: string;
-    location: string;
+    sample_type: string;
   }) => Promise<void>;
   initialChipId?: string;
 }
@@ -22,7 +22,7 @@ export default function SampleRegistrationForm({
 }: SampleRegistrationFormProps) {
   const [chipId, setChipId] = useState(initialChipId || '');
   const [patientId, setPatientId] = useState('BDx-');
-  const [location, setLocation] = useState('');
+  const [sampleType, setSampleType] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Reset form when modal closes
@@ -30,7 +30,7 @@ export default function SampleRegistrationForm({
     if (!isOpen) {
       setChipId(initialChipId || '');
       setPatientId('BDx-');
-      setLocation('');
+      setSampleType('');
       setLoading(false);
     }
   }, [isOpen, initialChipId]);
@@ -57,7 +57,7 @@ export default function SampleRegistrationForm({
       await onSubmit({
         chip_id: chipId,
         patient_id: patientId,
-        location
+        sample_type: sampleType
       });
       
       toast.success('Sample registered successfully!', {
@@ -69,7 +69,7 @@ export default function SampleRegistrationForm({
       // Reset form
       setChipId('');
       setPatientId('BDx-');
-      setLocation('');
+      setSampleType('');
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to register sample', {
@@ -163,24 +163,24 @@ export default function SampleRegistrationForm({
               </div>
             </div>
 
-            {/* Location Field */}
+            {/* Sample Type Field */}
             <div className="space-y-2">
-              <label htmlFor="location" 
+              <label htmlFor="sampleType" 
                      className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Location
+                Sample Type
               </label>
               <select
-                id="location"
+                id="sampleType"
                 required
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                value={sampleType}
+                onChange={(e) => setSampleType(e.target.value)}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary 
                          focus:ring-2 focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600
                          dark:text-white transition-colors duration-200 appearance-none"
               >
-                <option value="">Select Location</option>
-                <option value="CT - Radiology">CT - Radiology</option>
-                <option value="BCC - 3rd Floor Clinic">BCC - 3rd Floor Clinic</option>
+                <option value="">Select Sample Type</option>
+                <option value="positive control">Positive Control</option>
+                <option value="negative control">Negative Control</option>
               </select>
             </div>
 

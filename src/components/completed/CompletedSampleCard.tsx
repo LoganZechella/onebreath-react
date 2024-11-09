@@ -33,7 +33,7 @@ export default function CompletedSampleCard({ sample }: CompletedSampleCardProps
 
       <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
         <p>
-          <span className="font-medium">Location:</span> {sample.location || 'Not specified'}
+          <span className="font-medium">Sample Type:</span> {sample.sample_type || 'Not specified'}
         </p>
         <p>
           <span className="font-medium">Batch Number:</span> {sample.batch_number || 'N/A'}
