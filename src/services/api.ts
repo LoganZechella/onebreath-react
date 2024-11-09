@@ -116,9 +116,19 @@ export const sampleService = {
     return response.data;
   },
 
-  downloadDataset: async () => {
-    const response = await api.get('/download_dataset', { responseType: 'blob' });
-    return response.data;
+  downloadDataset: async (): Promise<Blob> => {
+    try {
+      const response = await api.get('/download_samples', {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error downloading dataset:', error);
+      throw error;
+    }
   },
 
   registerSample: async (data: SampleRegistrationData) => {

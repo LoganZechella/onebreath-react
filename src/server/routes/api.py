@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response, make_response
+from flask import Blueprint, request, jsonify, Response, make_response, send_file
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import pytz
@@ -16,6 +16,7 @@ from functools import lru_cache
 import hashlib
 from concurrent.futures import TimeoutError
 import logging
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -490,6 +491,66 @@ def register_sample():
             "error": "Failed to insert sample"
         }), 500
 
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@api.route('/download_samples', methods=['GET'])
+@require_auth
+def download_samples():
+    from ..main import collection
+    try:
+        # Get all completed samples
+        samples = list(collection.find({"status": "Complete"}))
+        
+        # Transform the data for export
+        export_data = []
+        for sample in samples:
+            export_data.append({
+                'Chip ID': sample['chip_id'],
+                'Patient ID': sample.get('patient_id', 'Not assigned'),
+                'Sample Type': sample.get('sample_type', 'Not specified'),
+                'Batch Number': sample.get('batch_number', 'N/A'),
+                'Manufacturing Date': sample.get('mfg_date', 'N/A'),
+                'Final Volume (mL)': sample.get('final_volume', 'N/A'),
+                'Average CO₂ (%)': sample.get('average_co2', 'N/A'),
+                'Error Code': sample.get('error', 'None'),
+                'Completion Time': sample.get('timestamp', 'Unknown'),
+                'Status': sample['status']
+            })
+        
+        # Create DataFrame
+        df = pd.DataFrame(export_data)
+        
+        # Create Excel file in memory
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Completed Samples', index=False)
+            
+            # Auto-adjust columns' width
+            worksheet = writer.sheets['Completed Samples']
+            for idx, col in enumerate(df.columns):
+                max_length = max(
+                    df[col].astype(str).apply(len).max(),
+                    len(col)
+                ) + 2
+                worksheet.column_dimensions[chr(65 + idx)].width = max_length
+        
+        output.seek(0)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'completed_samples_{timestamp}.xlsx'
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
     except Exception as e:
         return jsonify({
             "success": False,
