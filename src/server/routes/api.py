@@ -16,7 +16,7 @@ from functools import lru_cache
 import hashlib
 from concurrent.futures import TimeoutError
 import logging
-import pandas as pd
+
 
 logger = logging.getLogger(__name__)
 
@@ -176,62 +176,45 @@ def upload_from_memory():
 def download_dataset():
     from ..main import collection
     try:
-        # Get all completed samples
         samples = list(collection.find({"status": "Complete"}, {"_id": 0}))
         
-        if not samples:
-            return jsonify({"error": "No completed samples found"}), 404
-
         output = StringIO()
         writer = csv.writer(output)
         
         # Write headers
-        writer.writerow(['Date', 'Chip ID', 'Batch', 'Mfg. Date', 'Patient ID', 
-                        'Final Volume (mL)', 'Avg. CO2 (%)', 'Error Code', 
-                        'Patient Form Uploaded'])
+        writer.writerow(['Date', 'Chip ID', 'Patient ID', 'Sample Type', 
+                        'Batch', 'Mfg. Date', 'Final Volume (mL)', 
+                        'Avg. CO2 (%)', 'Error Code'])
         
         # Write data
         for sample in samples:
-            try:
-                # Format date
-                timestamp = datetime.fromisoformat(sample['timestamp'].replace('Z', '+00:00'))
-                short_date = timestamp.strftime('%m/%d/%y')
-                
-                # Format manufacturing date if it exists
-                mfg_date = sample.get('mfg_date')
-                mfg_short_date = datetime.strptime(mfg_date, '%Y-%m-%d').strftime('%m/%d/%y') if mfg_date else 'N/A'
-                
-                writer.writerow([
-                    short_date,
-                    sample['chip_id'],
-                    sample.get('batch_number', 'N/A'),
-                    mfg_short_date,
-                    sample.get('patient_id', 'N/A'),
-                    sample.get('final_volume', 'N/A'),
-                    sample.get('average_co2', 'N/A'),
-                    sample.get('error', 'N/A'),
-                    'Yes' if sample.get('document_urls') else 'No'
-                ])
-            except Exception as e:
-                print(f"Error processing sample {sample.get('chip_id')}: {str(e)}")
-                continue
+            timestamp = datetime.fromisoformat(sample['timestamp'].replace('Z', '+00:00'))
+            formatted_date = timestamp.strftime('%m/%d/%y')
+            
+            writer.writerow([
+                formatted_date,
+                sample['chip_id'],
+                sample.get('patient_id', 'N/A'),
+                sample.get('sample_type', 'N/A'),
+                sample.get('batch_number', 'N/A'),
+                sample.get('mfg_date', 'N/A'),
+                sample.get('final_volume', 'N/A'),
+                sample.get('average_co2', 'N/A'),
+                sample.get('error', 'N/A')
+            ])
         
         output.seek(0)
-        
-        response = make_response(send_file(
-            output,
+        return Response(
+            output.getvalue(),
             mimetype='text/csv',
-            as_attachment=True,
-            download_name=f'completed_samples_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-        ))
-        
-        # Set CORS headers
-        response.headers['Access-Control-Allow-Origin'] = 'https://onebreathpilotv2.netlify.app'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
-        
+            headers={
+                'Content-Disposition': f'attachment; filename=completed_samples_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                'Access-Control-Allow-Origin': 'https://onebreathpilotv2.netlify.app',
+                'Access-Control-Allow-Credentials': 'true'
+            }
+        )
     except Exception as e:
-        print(f"Error generating CSV: {str(e)}")
+        logger.error(f"Error generating CSV: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @api.route('/completed_samples', methods=['GET'])
@@ -509,66 +492,6 @@ def register_sample():
             "error": "Failed to insert sample"
         }), 500
 
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-@api.route('/download_samples', methods=['GET'])
-@require_auth
-def download_samples():
-    from ..main import collection
-    try:
-        # Get all completed samples
-        samples = list(collection.find({"status": "Complete"}))
-        
-        # Transform the data for export
-        export_data = []
-        for sample in samples:
-            export_data.append({
-                'Chip ID': sample['chip_id'],
-                'Patient ID': sample.get('patient_id', 'Not assigned'),
-                'Sample Type': sample.get('sample_type', 'Not specified'),
-                'Batch Number': sample.get('batch_number', 'N/A'),
-                'Manufacturing Date': sample.get('mfg_date', 'N/A'),
-                'Final Volume (mL)': sample.get('final_volume', 'N/A'),
-                'Average CO₂ (%)': sample.get('average_co2', 'N/A'),
-                'Error Code': sample.get('error', 'None'),
-                'Completion Time': sample.get('timestamp', 'Unknown'),
-                'Status': sample['status']
-            })
-        
-        # Create DataFrame
-        df = pd.DataFrame(export_data)
-        
-        # Create Excel file in memory
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Completed Samples', index=False)
-            
-            # Auto-adjust columns' width
-            worksheet = writer.sheets['Completed Samples']
-            for idx, col in enumerate(df.columns):
-                max_length = max(
-                    df[col].astype(str).apply(len).max(),
-                    len(col)
-                ) + 2
-                worksheet.column_dimensions[chr(65 + idx)].width = max_length
-        
-        output.seek(0)
-        
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'completed_samples_{timestamp}.xlsx'
-        
-        return send_file(
-            output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=filename
-        )
-        
     except Exception as e:
         return jsonify({
             "success": False,
