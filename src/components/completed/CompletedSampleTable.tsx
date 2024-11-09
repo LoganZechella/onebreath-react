@@ -36,6 +36,9 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               Average CO₂
             </th>
             <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+              Error Code
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
               Completed
             </th>
             <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
@@ -78,6 +81,15 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
                   {sample.average_co2 ? (
                     <span className="font-medium text-primary dark:text-primary-light">
                       {sample.average_co2}%
+                    </span>
+                  ) : 'N/A'}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {sample.error ? (
+                    <span className="font-medium text-red-600 dark:text-red-400">
+                      {sample.error}
                     </span>
                   ) : 'N/A'}
                 </span>
