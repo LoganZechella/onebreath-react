@@ -118,10 +118,11 @@ export const sampleService = {
 
   downloadDataset: async (): Promise<Blob> => {
     try {
-      const response = await api.get('/download_dataset', {
+      const response = await axios.get('https://onebreath-react.onrender.com/download_dataset', {
         responseType: 'blob',
         headers: {
-          'Accept': 'text/csv'
+          'Accept': 'text/csv',
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         }
       });
       return new Blob([response.data], { type: 'text/csv' });
