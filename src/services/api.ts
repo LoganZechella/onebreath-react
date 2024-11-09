@@ -118,10 +118,10 @@ export const sampleService = {
 
   downloadDataset: async (): Promise<Blob> => {
     try {
-      const response = await api.get('/download_samples', {
+      const response = await api.get('/download_dataset', {
         responseType: 'blob',
         headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          'Accept': 'text/csv'
         }
       });
       return response.data;
