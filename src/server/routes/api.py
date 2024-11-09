@@ -176,44 +176,58 @@ def upload_from_memory():
 def download_dataset():
     from ..main import collection
     try:
-        samples = collection.find({"status": "Complete"}, {"_id": 0}).sort("timestamp", 1)
+        # Get all completed samples
+        samples = list(collection.find({"status": "Complete"}, {"_id": 0}))
+        
+        if not samples:
+            return jsonify({"error": "No completed samples found"}), 404
 
         output = StringIO()
         writer = csv.writer(output)
+        
+        # Write headers
         writer.writerow(['Date', 'Chip ID', 'Batch', 'Mfg. Date', 'Patient ID', 
                         'Final Volume (mL)', 'Avg. CO2 (%)', 'Error Code', 
                         'Patient Form Uploaded'])
         
+        # Write data
         for sample in samples:
-            formatted_date = sample['timestamp'].split('T')[0]
-            parts = formatted_date.split('-')
-            short_year = parts[0].split('0')
-            short_date = f"{parts[1]}/{parts[2]}/{short_year[1]}"
-            
-            formatted_mfg = sample['mfg_date'].strftime('%Y-%m-%d')
-            mfg_parts = formatted_mfg.split('-')
-            mfg_short_year = mfg_parts[0][-2:]
-            mfg_short_date = f"{mfg_parts[1]}/{mfg_parts[2]}/{mfg_short_year}"
-            
-            writer.writerow([
-                short_date,
-                sample['chip_id'],
-                sample['batch_number'],
-                mfg_short_date,
-                sample.get('patient_id', 'N/A'),
-                f"{sample['final_volume']}",
-                f"{sample['average_co2']}",
-                sample.get('error', 'N/A'), 
-                'Yes' if sample.get('document_urls') else 'No'
-            ])
+            try:
+                # Format date
+                timestamp = datetime.fromisoformat(sample['timestamp'].replace('Z', '+00:00'))
+                short_date = timestamp.strftime('%m/%d/%y')
+                
+                # Format manufacturing date if it exists
+                mfg_date = sample.get('mfg_date')
+                mfg_short_date = datetime.strptime(mfg_date, '%Y-%m-%d').strftime('%m/%d/%y') if mfg_date else 'N/A'
+                
+                writer.writerow([
+                    short_date,
+                    sample['chip_id'],
+                    sample.get('batch_number', 'N/A'),
+                    mfg_short_date,
+                    sample.get('patient_id', 'N/A'),
+                    sample.get('final_volume', 'N/A'),
+                    sample.get('average_co2', 'N/A'),
+                    sample.get('error', 'N/A'),
+                    'Yes' if sample.get('document_urls') else 'No'
+                ])
+            except Exception as e:
+                print(f"Error processing sample {sample.get('chip_id')}: {str(e)}")
+                continue
         
         output.seek(0)
         return Response(
-            output, 
-            mimetype="text/csv", 
-            headers={"Content-Disposition": "attachment;filename=completed_samples.csv"}
+            output.getvalue(), 
+            mimetype='text/csv',
+            headers={
+                "Content-Disposition": "attachment;filename=completed_samples.csv",
+                "Content-Type": "text/csv",
+                "Access-Control-Allow-Origin": "*"
+            }
         )
     except Exception as e:
+        print(f"Error generating CSV: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @api.route('/completed_samples', methods=['GET'])
@@ -558,6 +572,14 @@ def download_samples():
         }), 500
 
 @api.after_request
-def add_security_headers(response):
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com"
+def add_headers(response):
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+        "https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com https://unpkg.com; "
+        "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com; "
+        "frame-src 'self' https://*.firebaseapp.com https://*.googleapis.com; "
+        "img-src 'self' data: https://*.googleapis.com; "
+        "style-src 'self' 'unsafe-inline';"
+    )
     return response

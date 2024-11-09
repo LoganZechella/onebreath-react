@@ -124,7 +124,7 @@ export const sampleService = {
           'Accept': 'text/csv'
         }
       });
-      return response.data;
+      return new Blob([response.data], { type: 'text/csv' });
     } catch (error) {
       console.error('Error downloading dataset:', error);
       throw error;
