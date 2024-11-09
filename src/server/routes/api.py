@@ -188,20 +188,33 @@ def download_dataset():
         
         # Write data
         for sample in samples:
-            timestamp = datetime.fromisoformat(sample['timestamp'].replace('Z', '+00:00'))
-            formatted_date = timestamp.strftime('%m/%d/%y')
-            
-            writer.writerow([
-                formatted_date,
-                sample['chip_id'],
-                sample.get('patient_id', 'N/A'),
-                sample.get('sample_type', 'N/A'),
-                sample.get('batch_number', 'N/A'),
-                sample.get('mfg_date', 'N/A'),
-                sample.get('final_volume', 'N/A'),
-                sample.get('average_co2', 'N/A'),
-                sample.get('error', 'N/A')
-            ])
+            try:
+                timestamp = datetime.fromisoformat(sample['timestamp'].replace('Z', '+00:00'))
+                formatted_date = timestamp.strftime('%m/%d/%y')
+                
+                # Format numeric values
+                final_volume = sample.get('final_volume')
+                if isinstance(final_volume, str):
+                    final_volume = final_volume.replace('mL', '').strip()
+                
+                avg_co2 = sample.get('average_co2')
+                if isinstance(avg_co2, str):
+                    avg_co2 = avg_co2.replace('%', '').strip()
+                
+                writer.writerow([
+                    formatted_date,
+                    sample['chip_id'],
+                    sample.get('patient_id', 'N/A'),
+                    sample.get('sample_type', 'N/A'),
+                    sample.get('batch_number', 'N/A'),
+                    sample.get('mfg_date', 'N/A'),
+                    final_volume if final_volume else 'N/A',
+                    avg_co2 if avg_co2 else 'N/A',
+                    sample.get('error', 'N/A')
+                ])
+            except Exception as e:
+                logger.error(f"Error processing sample {sample.get('chip_id')}: {str(e)}")
+                continue
         
         output.seek(0)
         return Response(
