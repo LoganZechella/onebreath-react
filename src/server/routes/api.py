@@ -217,15 +217,19 @@ def download_dataset():
                 continue
         
         output.seek(0)
-        return Response(
-            output.getvalue(), 
+        
+        response = make_response(send_file(
+            output,
             mimetype='text/csv',
-            headers={
-                "Content-Disposition": "attachment;filename=completed_samples.csv",
-                "Content-Type": "text/csv",
-                "Access-Control-Allow-Origin": "*"
-            }
-        )
+            as_attachment=True,
+            download_name=f'completed_samples_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        ))
+        
+        # Set CORS headers
+        response.headers['Access-Control-Allow-Origin'] = 'https://onebreathpilotv2.netlify.app'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+        
     except Exception as e:
         print(f"Error generating CSV: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -573,6 +577,10 @@ def download_samples():
 
 @api.after_request
 def add_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = 'https://onebreathpilotv2.netlify.app'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
