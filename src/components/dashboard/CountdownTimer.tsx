@@ -31,11 +31,8 @@ export default function CountdownTimer({ timestamp }: CountdownTimerProps) {
       setTimeRemaining(`${formattedHours}${showSeparator ? ':' : ' '}${formattedMinutes}${showSeparator ? ':' : ' '}${formattedSeconds}`);
     };
 
-    // Update time every second
     calculateTimeRemaining();
     const timeInterval = setInterval(calculateTimeRemaining, 1000);
-
-    // Flash separator every 500ms
     const flashInterval = setInterval(() => {
       setShowSeparator(prev => !prev);
     }, 500);
@@ -47,7 +44,7 @@ export default function CountdownTimer({ timestamp }: CountdownTimerProps) {
   }, [timestamp, showSeparator]);
 
   return (
-    <p className="text-sm text-gray-600 dark:text-gray-300 font-mono">
+    <p className="text-sm text-gray-600 dark:text-gray-300">
       {timeRemaining} remaining
     </p>
   );
