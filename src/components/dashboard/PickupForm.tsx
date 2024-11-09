@@ -39,8 +39,8 @@ export default function PickupForm({ chipId, isOpen, onClose, onSubmit }: Pickup
       return false;
     }
 
-    if (isNaN(co2Num) || co2Num < 0 || co2Num > 100) {
-      setValidationError('CO₂ percentage must be between 0 and 100%');
+    if (isNaN(co2Num) || co2Num < 0 || co2Num > 10) {
+      setValidationError('CO₂ percentage must be between 0 and 10%');
       return false;
     }
 
@@ -137,13 +137,15 @@ export default function PickupForm({ chipId, isOpen, onClose, onSubmit }: Pickup
                   id="co2"
                   value={co2}
                   onChange={(e) => setCo2(e.target.value)}
-                  step="0.1"
+                  step="any"
                   min="0"
-                  max="100"
+                  max="10"
                   required
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary 
                            focus:ring-2 focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600
-                           dark:text-white transition-colors duration-200"
+                           dark:text-white transition-colors duration-200 [appearance:textfield] 
+                           [&::-webkit-outer-spin-button]:appearance-none 
+                           [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="Enter CO₂ percentage"
                 />
                 <span className="absolute right-3 top-3 text-sm text-gray-500 dark:text-gray-400">
