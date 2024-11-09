@@ -44,7 +44,7 @@ api.interceptors.response.use(
 interface SampleRegistrationData {
   chip_id: string;
   patient_id: string;
-  location: string;
+  sample_type: string;
   status: string;
   timestamp: string;
 }
@@ -132,12 +132,12 @@ export const sampleService = {
   updateSampleWithPickupData: async (
     chipId: string, 
     status: string, 
-    location: string, 
+    sampleType: string, 
     pickupData: PickupData
   ): Promise<void> => {
     const response = await api.put(`/samples/${chipId}/pickup`, {
       status,
-      location,
+      sample_type: sampleType,
       average_co2: pickupData.co2_level,
       final_volume: pickupData.volume,
       ...(pickupData.error && { error: pickupData.error })
@@ -164,12 +164,12 @@ export const authService = {
 export const updateSampleWithPickupData = async (
   chipId: string,
   status: string,
-  location: string,
+  sampleType: string,
   pickupData: PickupData
 ): Promise<void> => {
   const response = await api.put(`/samples/${chipId}/pickup`, {
     status,
-    location,
+    sample_type: sampleType,
     average_co2: pickupData.co2_level,
     final_volume: pickupData.volume,
     ...(pickupData.error && { error: pickupData.error })

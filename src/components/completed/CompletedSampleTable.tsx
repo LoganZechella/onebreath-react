@@ -27,7 +27,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               Patient ID
             </th>
             <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
-              Location
+              Sample Type
             </th>
             <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
               Final Volume
@@ -64,7 +64,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {sample.location || 'Not specified'}
+                  {sample.sample_type || 'Not specified'}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">

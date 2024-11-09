@@ -10,7 +10,7 @@ interface QRScannerProps {
   onScanSuccess: (sampleData: {
     chip_id: string;
     patient_id: string;
-    location: string;
+    sample_type: string;
   }) => Promise<void>;
 }
 

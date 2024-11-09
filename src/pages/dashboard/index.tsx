@@ -31,14 +31,14 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateSample = async (chipId: string, status: string, location: string) => {
+  const handleUpdateSample = async (chipId: string, status: string, sampleType: string) => {
     try {
       await sampleService.updateSample({
         chip_id: chipId,
         status,
-        location
+        sample_type: sampleType
       });
-      await fetchSamples(); // Refresh the list
+      await fetchSamples();
     } catch (err) {
       setError('Failed to update sample');
       console.error(err);
@@ -48,7 +48,7 @@ export default function Dashboard() {
   const handleSampleRegistration = async (sampleData: {
     chip_id: string;
     patient_id: string;
-    location: string;
+    sample_type: string;
   }) => {
     try {
       setError(null);

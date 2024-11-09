@@ -85,29 +85,33 @@ def update_sample():
         update_data = request.json
         chip_id = update_data.get('chip_id')
         status = update_data.get('status')
-        location = update_data.get('location')
+        sample_type = update_data.get('sample_type')
 
-        if not chip_id or not status:
-            return jsonify({"error": "Missing chipID or status"}), 400
+        if not chip_id:
+            return jsonify({"success": False, "error": "Chip ID is required"}), 400
 
-        if status == "In Process":
-            update_data['expected_completion_time'] = datetime.now(pytz.utc) + timedelta(hours=2)
+        update_fields = {"status": status} if status else {}
+        if sample_type:
+            update_fields["sample_type"] = sample_type
 
-        update_result = collection.update_one(
+        result = collection.update_one(
             {"chip_id": chip_id},
-            {"$set": update_data}
+            {"$set": update_fields}
         )
 
-        if update_result.modified_count == 1:
-            if status in ["In Process", "Ready for Pickup"]:
-                subject = f"Sample Status Updated: {status}"
-                body = f"Sample with chip ID {chip_id} has been updated to '{status}' at '{location}'. Check dashboard for details."
-                send_email(subject, body)
-            return jsonify({"success": True, "message": "Sample updated successfully."}), 200
-        return jsonify({"success": False, "message": "No sample found with given chipID"}), 404
+        if result.matched_count > 0:
+            return jsonify({"success": True}), 200
+        
+        return jsonify({
+            "success": False,
+            "error": "Sample not found"
+        }), 404
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @api.route('/update_patient_info', methods=['POST'])
 @require_auth
@@ -408,7 +412,7 @@ def update_sample_pickup(chip_id):
     from ..main import collection
     try:
         data = request.json
-        required_fields = ['status', 'location', 'average_co2', 'final_volume']
+        required_fields = ['status', 'sample_type', 'average_co2', 'final_volume']
         
         if not all(field in data for field in required_fields):
             return jsonify({
@@ -418,7 +422,7 @@ def update_sample_pickup(chip_id):
 
         update_data = {
             "status": data['status'],
-            "location": data['location'],
+            "sample_type": data['sample_type'],
             "average_co2": data['average_co2'],
             "final_volume": data['final_volume']
         }
@@ -435,7 +439,8 @@ def update_sample_pickup(chip_id):
         if update_result.modified_count == 1:
             if data['status'] == "Picked up. Ready for Analysis":
                 subject = f"Sample Picked Up: {chip_id}"
-                body = (f"Sample with chip ID {chip_id} has been picked up at {data['location']}.\n"
+                body = (f"Sample with chip ID {chip_id} has been picked up.\n"
+                       f"Sample Type: {data['sample_type']}\n"
                        f"Final Volume: {data['final_volume']} mL\n"
                        f"Average CO2: {data['average_co2']}%")
                 send_email(subject, body)
@@ -448,6 +453,44 @@ def update_sample_pickup(chip_id):
 
     except Exception as e:
         logger.error(f"Error updating sample pickup data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@api.route('/register_sample', methods=['POST'])
+@require_auth
+def register_sample():
+    from ..main import collection
+    try:
+        data = request.json
+        required_fields = ['chip_id', 'patient_id', 'sample_type', 'status', 'timestamp']
+        
+        if not all(field in data for field in required_fields):
+            return jsonify({
+                "success": False,
+                "error": f"Missing required fields. Required: {', '.join(required_fields)}"
+            }), 400
+
+        new_sample = {
+            "chip_id": data['chip_id'],
+            "patient_id": data['patient_id'],
+            "sample_type": data['sample_type'],
+            "status": data['status'],
+            "timestamp": data['timestamp']
+        }
+
+        result = collection.insert_one(new_sample)
+        
+        if result.inserted_id:
+            return jsonify({"success": True}), 201
+            
+        return jsonify({
+            "success": False,
+            "error": "Failed to insert sample"
+        }), 500
+
+    except Exception as e:
         return jsonify({
             "success": False,
             "error": str(e)
