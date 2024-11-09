@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sample, PickupData } from '../../types';
 import PickupForm from './PickupForm';
 import { updateSampleWithPickupData } from '../../services/api';
+import CountdownTimer from './CountdownTimer';
 
 interface SampleCardProps {
   sample: Sample;
@@ -11,11 +12,14 @@ interface SampleCardProps {
 
 export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }: SampleCardProps) {
   const [showPickupForm, setShowPickupForm] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
 
   const handleStatusChange = async (newStatus: string) => {
     try {
       if (newStatus === 'Picked up. Ready for Analysis') {
         setShowPickupForm(true);
+      } else if (newStatus === 'Complete') {
+        setShowCompleteConfirm(true);
       } else {
         await onUpdateStatus(sample.chip_id, newStatus, sample.location || '');
       }
@@ -48,6 +52,23 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
     }
   };
 
+  const handleCompleteConfirm = async () => {
+    try {
+      await onUpdateStatus(sample.chip_id, 'Complete', sample.location || '');
+      setShowCompleteConfirm(false);
+    } catch (error) {
+      console.error('Error completing sample:', error);
+    }
+  };
+
+  const formatStartTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   return (
     <>
       <div className="bg-white dark:bg-gray-700 rounded-lg shadow-md p-4">
@@ -77,13 +98,19 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
                 Pickup
               </button>
             )}
+            {sample.status === 'Picked up. Ready for Analysis' && (
+              <button
+                onClick={() => handleStatusChange('Complete')}
+                className="px-3 py-1 text-sm bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors font-bold"
+              >
+                Complete
+              </button>
+            )}
           </div>
         </div>
-        <div className="text-sm text-gray-600 dark:text-gray-300">
-          <p>Patient ID: {sample.patient_id || 'Not assigned'}</p>
-          {sample.expected_completion_time && (
-            <p>Expected Completion: {new Date(sample.expected_completion_time).toLocaleString()}</p>
-          )}
+        <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+          <p>Started: {sample.timestamp ? formatStartTime(sample.timestamp) : 'Not started'}</p>
+          {sample.timestamp && <CountdownTimer timestamp={sample.timestamp} />}
         </div>
       </div>
 
@@ -93,6 +120,35 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
         onClose={() => setShowPickupForm(false)}
         onSubmit={handlePickupFormSubmit}
       />
+
+      {showCompleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-bold mb-4 dark:text-white">
+              Confirm Complete
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Are you sure you want to mark this sample as complete? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowCompleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg
+                         hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg
+                         hover:bg-green-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
