@@ -25,7 +25,7 @@ class Config:
     # MongoDB Configuration
     MONGO_URI = os.getenv('MONGO_URI')
     DATABASE_NAME = 'pilotstudy2024'
-    COLLECTION_NAME = 'collectedsamples'
+    COLLECTION_NAME = os.getenv('COLLECTION_NAME')
     ANALYZED_COLLECTION_NAME = os.getenv('ANALYZED_COLLECTION_NAME')
     MONGODB_DATA_API_KEY = os.getenv('MONGODB_DATA_API_KEY')
     
