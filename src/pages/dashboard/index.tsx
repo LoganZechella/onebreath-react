@@ -149,6 +149,7 @@ export default function Dashboard() {
                     key={sample.chip_id} 
                     sample={sample} 
                     onUpdateStatus={handleUpdateSample}
+                    onPickupComplete={fetchSamples}
                   />
                 ))}
               {samples.filter(s => s.status === 'In Process').length === 0 && (
@@ -177,6 +178,7 @@ export default function Dashboard() {
                     key={sample.chip_id} 
                     sample={sample} 
                     onUpdateStatus={handleUpdateSample}
+                    onPickupComplete={fetchSamples}
                   />
                 ))}
               {samples.filter(s => s.status === 'Ready for Pickup').length === 0 && (
@@ -206,6 +208,7 @@ export default function Dashboard() {
                     key={sample.chip_id} 
                     sample={sample} 
                     onUpdateStatus={handleUpdateSample}
+                    onPickupComplete={fetchSamples}
                   />
                 ))}
               {samples.filter(s => s.status === 'Picked up. Ready for Analysis').length === 0 && (
