@@ -34,8 +34,8 @@ export default function PickupForm({ chipId, isOpen, onClose, onSubmit }: Pickup
     const co2Num = parseFloat(co2);
     const errorNum = parseInt(error);
 
-    if (isNaN(volumeNum) || volumeNum < 0 || volumeNum > 100) {
-      setValidationError('Volume must be between 0 and 100 mL');
+    if (isNaN(volumeNum) || volumeNum < 0) {
+      setValidationError('Volume must be a positive number');
       return false;
     }
 
@@ -111,13 +111,14 @@ export default function PickupForm({ chipId, isOpen, onClose, onSubmit }: Pickup
                   id="volume"
                   value={volume}
                   onChange={(e) => setVolume(e.target.value)}
-                  step="0.1"
+                  step="any"
                   min="0"
-                  max="100"
                   required
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary 
                            focus:ring-2 focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600
-                           dark:text-white transition-colors duration-200"
+                           dark:text-white transition-colors duration-200 [appearance:textfield] 
+                           [&::-webkit-outer-spin-button]:appearance-none 
+                           [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="Enter volume"
                 />
                 <span className="absolute right-3 top-3 text-sm text-gray-500 dark:text-gray-400">
