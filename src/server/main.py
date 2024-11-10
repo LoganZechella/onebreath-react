@@ -18,7 +18,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["https://onebreathpilotv2.netlify.app"],
+         "origins": ["https://onebreatpilot.netlify.app"],
          "methods": ["GET", "POST", "PUT", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
