@@ -220,7 +220,7 @@ def download_dataset():
             mimetype='text/csv',
             headers={
                 'Content-Disposition': f'attachment; filename=completed_samples_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                'Access-Control-Allow-Origin': 'https://onebreathpilotv2.netlify.app',
+                'Access-Control-Allow-Origin': 'https://onebreatpilot.netlify.app',
                 'Access-Control-Allow-Credentials': 'true'
             }
         )
@@ -511,7 +511,7 @@ def register_sample():
 
 @api.after_request
 def add_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = 'https://onebreathpilotv2.netlify.app'
+    response.headers['Access-Control-Allow-Origin'] = 'https://onebreatpilot.netlify.app'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
