@@ -11,7 +11,7 @@ from src.server.utils.helpers import send_email
 from src.server.config import Config
 from flask_apscheduler import APScheduler
 from datetime import datetime, timedelta
-from datetime import timezone
+import pytz
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,36 +42,38 @@ scheduler.start()
 # Register scheduled task
 @scheduler.task('interval', id='update_expired_samples', seconds=300)  # runs every 5 minutes
 def scheduled_update_expired_samples():
-    try:
-        # Calculate the timestamp for 2 hours ago using non-deprecated method
-        two_hours_ago = datetime.now(timezone.UTC) - timedelta(hours=2)
-        
-        # Find samples that need updating
-        expired_samples = collection.find({
-            "status": "In Process",
-            "timestamp": {"$lt": two_hours_ago}
-        })
-        
-        # Update samples and send notifications
-        for sample in expired_samples:
-            result = collection.update_one(
-                {"_id": sample["_id"]},
-                {"$set": {"status": "Ready for Pickup"}}
-            )
+    with app.app_context():
+        try:
+            # Calculate the timestamp for 2 hours ago using pytz
+            two_hours_ago = datetime.now(pytz.UTC) - timedelta(hours=2)
             
-            if result.modified_count > 0:
-                subject = f"Sample Ready for Pickup: {sample['chip_id']}"
-                body = (f"Sample with chip ID {sample['chip_id']} is now ready for pickup.\n"
-                       f"Sample Type: {sample.get('sample_type', 'N/A')}\n"
-                       f"Patient ID: {sample.get('patient_id', 'N/A')}\n"
-                       f"Time Registered: {sample['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
-                send_email(subject, body)
-                logger.info(f"Updated sample {sample['chip_id']} to Ready for Pickup")
+            # Find samples that need updating
+            expired_samples = collection.find({
+                "status": "In Process",
+                "timestamp": {"$lt": two_hours_ago}
+            })
             
-    except Exception as e:
-        error_msg = f"Scheduled task error: {str(e)}"
-        logger.error(error_msg)
-        send_email("Error in Sample Update Task", error_msg)
+            # Update samples and send notifications
+            for sample in expired_samples:
+                result = collection.update_one(
+                    {"_id": sample["_id"]},
+                    {"$set": {"status": "Ready for Pickup"}}
+                )
+                
+                if result.modified_count > 0:
+                    subject = f"Sample Ready for Pickup: {sample['chip_id']}"
+                    body = (f"Sample with chip ID {sample['chip_id']} is now ready for pickup.\n"
+                           f"Sample Type: {sample.get('sample_type', 'N/A')}\n"
+                           f"Patient ID: {sample.get('patient_id', 'N/A')}\n"
+                           f"Time Registered: {sample['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                    send_email(subject, body)
+                    logger.info(f"Updated sample {sample['chip_id']} to Ready for Pickup")
+                
+        except Exception as e:
+            error_msg = f"Scheduled task error: {str(e)}"
+            logger.error(error_msg)
+            with app.app_context():
+                send_email("Error in Sample Update Task", error_msg)
 
 try:
     # Firebase Admin SDK initialization
