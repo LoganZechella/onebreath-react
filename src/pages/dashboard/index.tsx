@@ -14,17 +14,20 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [showManualEntryWithChipId, setShowManualEntryWithChipId] = useState<string | null>(null);
+  const [chipIdFromUrl, setChipIdFromUrl] = useState<string | null>(null);
 
+  // Handle URL parameters on mount
   useEffect(() => {
-    fetchSamples();
-    
-    // Check for chipID in URL parameters
     const chipID = searchParams.get('chipID');
     if (chipID && /^P\d{5}$/.test(chipID)) {
-      setShowManualEntryWithChipId(chipID);
+      setChipIdFromUrl(chipID);
     }
-  }, [searchParams]);
+  }, []); // Empty dependency array so it only runs on mount
+
+  // Separate useEffect for fetching samples
+  useEffect(() => {
+    fetchSamples();
+  }, []);
 
   const fetchSamples = async () => {
     try {
@@ -93,13 +96,13 @@ export default function Dashboard() {
       />
 
       <SampleRegistrationForm
-        isOpen={showManualEntry || showManualEntryWithChipId !== null}
+        isOpen={showManualEntry || chipIdFromUrl !== null}
         onClose={() => {
           setShowManualEntry(false);
-          setShowManualEntryWithChipId(null);
+          setChipIdFromUrl(null);
         }}
         onSubmit={handleSampleRegistration}
-        initialChipId={showManualEntryWithChipId || ''}
+        initialChipId={chipIdFromUrl || ''}
       />
 
       <Toaster position="top-right" />
