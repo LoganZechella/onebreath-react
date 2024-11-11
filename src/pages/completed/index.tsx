@@ -9,7 +9,7 @@ export default function CompletedSamples() {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [isDownloading, setIsDownloading] = useState(false);
   const [sortAscending, setSortAscending] = useState(true);
 
