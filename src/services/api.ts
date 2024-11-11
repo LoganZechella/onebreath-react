@@ -3,7 +3,7 @@ import { auth } from './firebase';
 import { Sample, AnalyzedSample, PickupData } from '../types';
 
 const api = axios.create({
-  baseURL: 'https://onebreath-react.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || 'https://onebreath-react.onrender.com',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

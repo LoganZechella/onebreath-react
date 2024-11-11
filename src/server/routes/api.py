@@ -511,17 +511,10 @@ def register_sample():
 
 @api.after_request
 def add_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = 'https://onebreatpilot.netlify.app'
+    origin = request.headers.get('Origin')
+    if origin in ["https://onebreathpilot.netlify.app", "http://localhost:5173"]:
+        response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Content-Security-Policy'] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
-        "https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com https://unpkg.com; "
-        "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com; "
-        "frame-src 'self' https://*.firebaseapp.com https://*.googleapis.com; "
-        "img-src 'self' data: https://*.googleapis.com; "
-        "style-src 'self' 'unsafe-inline';"
-    )
     return response

@@ -18,14 +18,13 @@ app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["https://onebreatpilot.netlify.app"],
-         "methods": ["GET", "POST", "PUT", "OPTIONS"],
+         "origins": ["https://onebreathpilot.netlify.app", "http://localhost:5173"],
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
          "expose_headers": ["Content-Range", "X-Content-Range"],
          "max_age": 600
      }},
-     allow_headers=["Content-Type", "Authorization"],
      supports_credentials=True)
 
 # Initialize Flask-Mail
