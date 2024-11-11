@@ -20,20 +20,27 @@ export default function SampleRegistrationForm({
   onSubmit,
   initialChipId 
 }: SampleRegistrationFormProps) {
-  const [chipId, setChipId] = useState(initialChipId || '');
+  const [chipId, setChipId] = useState('');
   const [patientId, setPatientId] = useState('BDx-');
   const [sampleType, setSampleType] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Update chipId when initialChipId changes or modal opens
+  useEffect(() => {
+    if (isOpen && initialChipId) {
+      setChipId(initialChipId);
+    }
+  }, [isOpen, initialChipId]);
+
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setChipId(initialChipId || '');
+      setChipId('');
       setPatientId('BDx-');
       setSampleType('');
       setLoading(false);
     }
-  }, [isOpen, initialChipId]);
+  }, [isOpen]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {

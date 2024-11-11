@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response, make_response, send_file
+from flask import Blueprint, request, jsonify, Response, make_response, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import pytz
@@ -518,3 +518,8 @@ def add_headers(response):
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
+
+@api.route('/', defaults={'path': ''})
+@api.route('/<path:path>')
+def catch_all(path):
+    return send_from_directory('../public', 'index.html')
