@@ -11,6 +11,7 @@ export default function CompletedSamples() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [sortAscending, setSortAscending] = useState(true);
 
   useEffect(() => {
     fetchCompletedSamples();
@@ -64,6 +65,25 @@ export default function CompletedSamples() {
 
   console.log('Current state:', { samples, error, viewMode });
 
+  const sortedSamples = [...samples].sort((a, b) => {
+    // First compare by date
+    const dateA = new Date(a.timestamp);
+    const dateB = new Date(b.timestamp);
+    
+    if (dateA < dateB) return sortAscending ? -1 : 1;
+    if (dateA > dateB) return sortAscending ? 1 : -1;
+    
+    // If dates are equal, compare by patient ID
+    const patientA = a.patient_id || '';
+    const patientB = b.patient_id || '';
+    
+    // Extract numbers from patient IDs for numerical comparison
+    const numA = parseInt(patientA.replace(/\D/g, '')) || 0;
+    const numB = parseInt(patientB.replace(/\D/g, '')) || 0;
+    
+    return numA - numB;
+  });
+
   return (
     <>
       <Toaster position="top-right" />
@@ -73,6 +93,23 @@ export default function CompletedSamples() {
             Completed Samples
           </h1>
           <div className="flex items-center space-x-4">
+            {/* Sort Toggle */}
+            <button
+              onClick={() => setSortAscending(!sortAscending)}
+              className="p-2 rounded-md transition-colors text-gray-500 hover:text-primary bg-white dark:bg-gray-800 shadow"
+              aria-label={sortAscending ? "Sort newest first" : "Sort oldest first"}
+            >
+              {sortAscending ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9M3 12h5m0 0v8m0-8h2" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h5m0 0v8m0-8h2m10-4h-5m0 0v8m0-8h2" />
+                </svg>
+              )}
+            </button>
+
             {/* View Toggle */}
             <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg shadow p-1">
               <button
@@ -152,19 +189,19 @@ export default function CompletedSamples() {
           </div>
         )}
 
-        {samples.length === 0 ? (
+        {sortedSamples.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             No completed samples available
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {samples.map(sample => (
+            {sortedSamples.map(sample => (
               <CompletedSampleCard key={sample.chip_id} sample={sample} />
             ))}
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-            <CompletedSampleTable samples={samples} />
+            <CompletedSampleTable samples={sortedSamples} />
           </div>
         )}
       </div>
