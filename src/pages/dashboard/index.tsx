@@ -14,20 +14,10 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [chipIdFromUrl, setChipIdFromUrl] = useState<string | null>(null);
 
-  // Handle URL parameters on mount
-  useEffect(() => {
-    const chipID = searchParams.get('chipID');
-    if (chipID && /^P\d{5}$/.test(chipID)) {
-      setChipIdFromUrl(chipID);
-    }
-  }, []); // Empty dependency array so it only runs on mount
-
-  // Separate useEffect for fetching samples
-  useEffect(() => {
-    fetchSamples();
-  }, []);
+  // Check URL parameters immediately
+  const chipIdFromUrl = searchParams.get('chipID');
+  const showFormFromUrl = Boolean(chipIdFromUrl && /^P\d{5}$/.test(chipIdFromUrl));
 
   const fetchSamples = async () => {
     try {
@@ -37,11 +27,14 @@ export default function Dashboard() {
     } catch (err) {
       setError('Failed to fetch samples');
       console.error(err);
-      setSamples([]);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchSamples();
+  }, []);
 
   const handleUpdateSample = async (chipId: string, status: string, sampleType: string) => {
     try {
@@ -73,6 +66,8 @@ export default function Dashboard() {
       await fetchSamples();
       setShowScanner(false);
       setShowManualEntry(false);
+      // Clear URL parameters after successful registration
+      window.history.replaceState({}, '', window.location.pathname);
     } catch (error) {
       setError((error as Error).message);
       console.error('Error registering sample:', error);
@@ -96,10 +91,11 @@ export default function Dashboard() {
       />
 
       <SampleRegistrationForm
-        isOpen={showManualEntry || chipIdFromUrl !== null}
+        isOpen={showManualEntry || showFormFromUrl}
         onClose={() => {
           setShowManualEntry(false);
-          setChipIdFromUrl(null);
+          // Clear URL parameters when closing the form
+          window.history.replaceState({}, '', window.location.pathname);
         }}
         onSubmit={handleSampleRegistration}
         initialChipId={chipIdFromUrl || ''}
