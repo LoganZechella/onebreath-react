@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { sampleService } from '../../services/api';
 import { Sample } from '../../types';
 import SampleCard from '../../components/dashboard/SampleCard';
@@ -7,15 +8,23 @@ import SampleRegistrationForm from '../../components/dashboard/SampleRegistratio
 import { Toaster } from 'react-hot-toast';
 
 export default function Dashboard() {
+  const [searchParams] = useSearchParams();
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [showManualEntryWithChipId, setShowManualEntryWithChipId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSamples();
-  }, []);
+    
+    // Check for chipID in URL parameters
+    const chipID = searchParams.get('chipID');
+    if (chipID && /^P\d{5}$/.test(chipID)) {
+      setShowManualEntryWithChipId(chipID);
+    }
+  }, [searchParams]);
 
   const fetchSamples = async () => {
     try {
@@ -84,9 +93,13 @@ export default function Dashboard() {
       />
 
       <SampleRegistrationForm
-        isOpen={showManualEntry}
-        onClose={() => setShowManualEntry(false)}
+        isOpen={showManualEntry || showManualEntryWithChipId !== null}
+        onClose={() => {
+          setShowManualEntry(false);
+          setShowManualEntryWithChipId(null);
+        }}
         onSubmit={handleSampleRegistration}
+        initialChipId={showManualEntryWithChipId || ''}
       />
 
       <Toaster position="top-right" />
