@@ -66,7 +66,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               Sample Type
             </th>
             <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
-              Final Vol
+              Final Volume
             </th>
             <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
               Avg CO₂
@@ -105,7 +105,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {sample.final_volume ? `${sample.final_volume}` : 'N/A'}
+                  {sample.final_volume ? `${sample.final_volume} mL` : 'N/A'}
                 </span>
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
