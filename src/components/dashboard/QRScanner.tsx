@@ -87,95 +87,71 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
     }
   }, [isOpen, cleanup, isCleaningUp]);
 
-  useEffect(() => {
-    let mounted = true;
+  const initializeScanner = useCallback(async () => {
+    if (!isOpen || isCleaningUp) return;
 
-    const initializeScanner = async () => {
-      if (!isOpen || isCleaningUp) return;
+    try {
+      await cleanup();
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      try {
-        await cleanup();
-        await new Promise(resolve => setTimeout(resolve, 100));
-        if (!mounted) return;
-
-        const scanner = new Html5QrcodeScanner(
-          'qr-reader',
-          {
-            fps: 10,
-            qrbox: window.innerWidth < 640 ? { width: 200, height: 200 } : { width: 250, height: 250 },
-            aspectRatio: window.innerWidth < 640 ? 4/3 : 16/9,
-            videoConstraints: {
-              facingMode: { ideal: 'environment' },
-              width: { min: 640, ideal: window.innerWidth < 640 ? 1280 : 1920, max: 1920 },
-              height: { min: 480, ideal: window.innerWidth < 640 ? 960 : 1080, max: 1080 }
-            },
-            showTorchButtonIfSupported: true,
-            showZoomSliderIfSupported: true,
-            defaultZoomValueIfSupported: window.innerWidth < 640 ? 1.5 : 2,
-            hideMotivationalMessage: true,
-            verbose: false
+      const scanner = new Html5QrcodeScanner(
+        'qr-reader',
+        {
+          fps: 10,
+          qrbox: window.innerWidth < 640 ? { width: 200, height: 200 } : { width: 250, height: 250 },
+          aspectRatio: window.innerWidth < 640 ? 4/3 : 16/9,
+          videoConstraints: {
+            facingMode: { ideal: 'environment' },
+            width: { min: 640, ideal: window.innerWidth < 640 ? 1280 : 1920, max: 1920 },
+            height: { min: 480, ideal: window.innerWidth < 640 ? 960 : 1080, max: 1080 }
           },
-          false
-        );
+          showTorchButtonIfSupported: true,
+          showZoomSliderIfSupported: true,
+          defaultZoomValueIfSupported: window.innerWidth < 640 ? 1.5 : 2,
+          hideMotivationalMessage: true,
+          verbose: false
+        },
+        true
+      );
 
-        await scanner.render(
-          async (decodedText: string) => {
-            try {
-              // Parse the URL
-              const url = new URL(decodedText);
+      await scanner.render(
+        async (decodedText: string) => {
+          try {
+            const url = new URL(decodedText);
+            const chipID = url.searchParams.get('chipID');
+            
+            if (chipID && /^P\d{5}$/.test(chipID)) {
+              setScannedChipId(chipID);
+              setShowRegistrationForm(true);
               
-              // Get the chipID from the URL parameters
-              const chipID = url.searchParams.get('chipID');
-              
-              // Validate the chipID format
-              if (chipID && /^P\d{5}$/.test(chipID)) {
-                // Set the scanned chip ID and show the registration form
-                setScannedChipId(chipID);
-                setShowRegistrationForm(true);
-                
-                // Stop the scanner since we have a valid scan
-                try {
-                  const html5QrcodeScanner = scanner.getState()?.html5Qrcode;
-                  if (html5QrcodeScanner) {
-                    await html5QrcodeScanner.stop();
-                  }
-                } catch (stopError) {
-                  console.warn('Error stopping scanner after successful scan:', stopError);
+              try {
+                const html5QrcodeScanner = scanner.getState()?.html5Qrcode;
+                if (html5QrcodeScanner) {
+                  await html5QrcodeScanner.stop();
                 }
-              } else {
-                setError('Invalid QR code format. Expected URL with chipID parameter in format PXXXXX');
+              } catch (stopError) {
+                console.warn('Error stopping scanner after successful scan:', stopError);
               }
-            } catch (urlError) {
-              setError('Invalid QR code format. Expected valid URL with chipID parameter');
+            } else {
+              setError('Invalid QR code format. Expected URL with chipID parameter in format PXXXXX');
             }
-          },
-          (errorMessage: string) => {
-            if (errorMessage.includes('permission')) {
-              setError('Camera access denied. Please grant permission and try again.');
-            }
+          } catch (urlError) {
+            setError('Invalid QR code format. Expected valid URL with chipID parameter');
           }
-        );
-
-        scannerRef.current = scanner;
-        setCameraStarted(true);
-      } catch (err) {
-        console.error('Camera initialization error:', err);
-        if (mounted) {
-          setError('Failed to initialize camera. Please try again.');
+        },
+        (errorMessage: string) => {
+          if (errorMessage.includes('permission')) {
+            setError('Camera access denied. Please grant permission and try again.');
+          }
         }
-      }
-    };
+      );
 
-    if (isOpen && !isCleaningUp) {
-      initializeScanner();
+      scannerRef.current = scanner;
+      setCameraStarted(true);
+    } catch (err) {
+      console.error('Camera initialization error:', err);
+      setError('Failed to initialize camera. Please try again.');
     }
-
-    return () => {
-      mounted = false;
-      if (!isCleaningUp) {
-        cleanup();
-      }
-    };
   }, [isOpen, cleanup, isCleaningUp]);
 
   // Handle the close button click
@@ -185,6 +161,28 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
       onClose();
     }
   }, [cleanup, onClose, isCleaningUp]);
+
+  const requestCameraPermission = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      // After getting permission, reinitialize the scanner
+      initializeScanner();
+    } catch (err) {
+      setError('Camera access denied. Please grant permission and try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && !isCleaningUp) {
+      initializeScanner();
+    }
+
+    return () => {
+      if (!isCleaningUp) {
+        cleanup();
+      }
+    };
+  }, [isOpen, cleanup, isCleaningUp, initializeScanner]);
 
   if (!isOpen) return null;
 
@@ -228,8 +226,13 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
               <div className="aspect-[4/3] w-full">
                 {!cameraStarted && !error && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90">
-                    <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <p className="mt-4 text-sm text-gray-200">Initializing camera...</p>
+                    <button
+                      onClick={requestCameraPermission}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    >
+                      Request Camera Permissions
+                    </button>
+                    <p className="mt-4 text-sm text-gray-200">Camera access required for scanning</p>
                   </div>
                 )}
                 <div id="qr-reader" className="w-full h-full" />
