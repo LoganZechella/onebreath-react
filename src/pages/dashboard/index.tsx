@@ -13,15 +13,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
-  const [showManualEntry, setShowManualEntry] = useState(false);
-
-  // Handle direct URL access with chipID
-  useEffect(() => {
-    const chipID = searchParams.get('chipID');
-    if (chipID && /^P\d{5}$/.test(chipID)) {
-      setShowManualEntry(true);
-    }
-  }, [searchParams]);
+  
+  // Initialize showManualEntry based on URL params
+  const chipID = searchParams.get('chipID');
+  const [showManualEntry, setShowManualEntry] = useState(
+    Boolean(chipID && /^P\d{5}$/.test(chipID))
+  );
 
   const fetchSamples = async () => {
     try {
@@ -103,7 +100,7 @@ export default function Dashboard() {
           }
         }}
         onSubmit={handleSampleRegistration}
-        initialChipId={searchParams.get('chipID') || ''}
+        initialChipId={chipID || ''}
       />
 
       <Toaster position="top-right" />
