@@ -90,7 +90,7 @@ export default function CompletedSamples() {
       <div className="container mx-auto px-2 py-6 max-w-full">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-white-900 dark:text-white">
               Completed Samples
             </h1>
             <span className="px-3 py-1.5 text-sm font-medium rounded-full 
