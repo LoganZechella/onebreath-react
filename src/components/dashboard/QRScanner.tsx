@@ -21,13 +21,15 @@ const ScannerOverlay = () => (
       {/* Scanning frame */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-72 sm:h-72">
         {/* Animated corners */}
-        <div className="absolute left-0 top-0 w-8 h-8 border-l-2 border-t-2 border-primary animate-pulse"></div>
-        <div className="absolute right-0 top-0 w-8 h-8 border-r-2 border-t-2 border-primary animate-pulse"></div>
-        <div className="absolute left-0 bottom-0 w-8 h-8 border-l-2 border-b-2 border-primary animate-pulse"></div>
-        <div className="absolute right-0 bottom-0 w-8 h-8 border-r-2 border-b-2 border-primary animate-pulse"></div>
+        <div className="absolute left-0 top-0 w-12 h-12 border-l-4 border-t-4 border-primary animate-pulse"></div>
+        <div className="absolute right-0 top-0 w-12 h-12 border-r-4 border-t-4 border-primary animate-pulse"></div>
+        <div className="absolute left-0 bottom-0 w-12 h-12 border-l-4 border-b-4 border-primary animate-pulse"></div>
+        <div className="absolute right-0 bottom-0 w-12 h-12 border-r-4 border-b-4 border-primary animate-pulse"></div>
         
         {/* Scanning line animation */}
-        <div className="absolute left-0 right-0 h-0.5 bg-primary/50 animate-scanner-line"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full h-0.5 bg-primary/50 animate-scanner-line"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -124,7 +126,7 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold">Scan Sample QR Code</h2>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white">
                       <svg className="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" fill="none">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
