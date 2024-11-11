@@ -202,8 +202,8 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
       ) : (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       )}
-      <div className="relative h-full flex items-center justify-center p-4 sm:p-6">
-        <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative h-[100dvh] flex items-center justify-center p-4 sm:p-6">
+        <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90dvh]">
           {/* Header with improved contrast and spacing */}
           <div className="relative px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -221,9 +221,9 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
           </div>
 
           {/* Scanner container with proper padding and aspect ratio */}
-          <div className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="relative bg-black rounded-lg overflow-hidden shadow-inner">
-              <div className="aspect-[4/3] w-full">
+          <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="relative bg-black rounded-lg overflow-hidden shadow-inner flex-1">
+              <div className="absolute inset-0">
                 {!cameraStarted && !error && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90">
                     <button
