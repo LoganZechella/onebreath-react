@@ -19,12 +19,12 @@ const ScannerOverlay = () => (
   <div className="absolute inset-0 pointer-events-none">
     <div className="relative w-full h-full">
       {/* Scanning frame */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-72 sm:h-72">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 sm:w-64 sm:h-64">
         {/* Animated corners */}
-        <div className="absolute left-0 top-0 w-12 h-12 border-l-4 border-t-4 border-primary animate-pulse"></div>
-        <div className="absolute right-0 top-0 w-12 h-12 border-r-4 border-t-4 border-primary animate-pulse"></div>
-        <div className="absolute left-0 bottom-0 w-12 h-12 border-l-4 border-b-4 border-primary animate-pulse"></div>
-        <div className="absolute right-0 bottom-0 w-12 h-12 border-r-4 border-b-4 border-primary animate-pulse"></div>
+        <div className="absolute left-0 top-0 w-8 h-8 sm:w-12 sm:h-12 border-l-4 border-t-4 border-primary animate-pulse"></div>
+        <div className="absolute right-0 top-0 w-8 h-8 sm:w-12 sm:h-12 border-r-4 border-t-4 border-primary animate-pulse"></div>
+        <div className="absolute left-0 bottom-0 w-8 h-8 sm:w-12 sm:h-12 border-l-4 border-b-4 border-primary animate-pulse"></div>
+        <div className="absolute right-0 bottom-0 w-8 h-8 sm:w-12 sm:h-12 border-r-4 border-b-4 border-primary animate-pulse"></div>
         
         {/* Scanning line animation */}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -50,11 +50,14 @@ export default function QRScanner({ isOpen, onClose, onScanSuccess }: QRScannerP
       const cameras = await Html5Qrcode.getCameras();
       
       if (cameras && cameras.length > 0) {
+        const isMobile = window.innerWidth < 640;
+        const qrboxSize = isMobile ? 200 : 250;
+        
         await scanner.start(
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: qrboxSize, height: qrboxSize },
           },
           async (decodedText: string) => {
             try {
