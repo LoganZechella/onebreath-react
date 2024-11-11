@@ -16,6 +16,7 @@ from functools import lru_cache
 import hashlib
 from concurrent.futures import TimeoutError
 import logging
+from datetime import timezone
 
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,13 @@ def get_samples():
     )
     samples = list(query_result)
     samples = [convert_decimal128(sample) for sample in samples]
-    return jsonify(samples), 200 
+    
+    # Convert datetime objects to ISO format strings for JSON serialization
+    for sample in samples:
+        if 'timestamp' in sample and isinstance(sample['timestamp'], datetime):
+            sample['timestamp'] = sample['timestamp'].isoformat() + 'Z'
+    
+    return jsonify(samples), 200
 
 @api.route('/update_sample', methods=['POST'])
 @require_auth
@@ -91,6 +98,11 @@ def update_sample():
         if not chip_id:
             return jsonify({"success": False, "error": "Chip ID is required"}), 400
 
+        # Get the current sample data
+        current_sample = collection.find_one({"chip_id": chip_id})
+        if not current_sample:
+            return jsonify({"success": False, "error": "Sample not found"}), 404
+
         update_fields = {"status": status} if status else {}
         if sample_type:
             update_fields["sample_type"] = sample_type
@@ -100,7 +112,17 @@ def update_sample():
             {"$set": update_fields}
         )
 
-        if result.matched_count > 0:
+        if result.modified_count > 0:
+            # Send notification for status changes
+            if status and status != current_sample.get('status'):
+                subject = f"Sample Status Updated: {chip_id}"
+                body = (f"Sample status has been updated:\n\n"
+                       f"Chip ID: {chip_id}\n"
+                       f"Previous Status: {current_sample.get('status', 'N/A')}\n"
+                       f"New Status: {status}\n"
+                       f"Sample Type: {sample_type or current_sample.get('sample_type', 'N/A')}\n"
+                       f"Update Time: {datetime.now(timezone.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                send_email(subject, body)
             return jsonify({"success": True}), 200
         
         return jsonify({
@@ -109,6 +131,9 @@ def update_sample():
         }), 404
 
     except Exception as e:
+        error_msg = f"Error updating sample {chip_id}: {str(e)}"
+        logger.error(error_msg)
+        send_email("Error in Sample Update", error_msg)
         return jsonify({
             "success": False,
             "error": str(e)
@@ -485,17 +510,41 @@ def register_sample():
                 "error": f"Missing required fields. Required: {', '.join(required_fields)}"
             }), 400
 
+        # Convert ISO timestamp string to datetime object
+        try:
+            timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
+            timestamp = timestamp.replace(tzinfo=None)
+            # Calculate expected completion time (2 hours after timestamp)
+            expected_completion_time = timestamp + timedelta(hours=2)
+        except ValueError:
+            return jsonify({
+                "success": False,
+                "error": "Invalid timestamp format. Use ISO format."
+            }), 400
+
         new_sample = {
             "chip_id": data['chip_id'],
             "patient_id": data['patient_id'],
             "sample_type": data['sample_type'],
             "status": data['status'],
-            "timestamp": data['timestamp']
+            "timestamp": timestamp,
+            "expected_completion_time": expected_completion_time
         }
 
         result = collection.insert_one(new_sample)
         
         if result.inserted_id:
+            # Send notification email for new sample registration
+            subject = f"New Sample Registered: {data['chip_id']}"
+            body = (f"A new sample has been registered:\n\n"
+                   f"Chip ID: {data['chip_id']}\n"
+                   f"Patient ID: {data['patient_id']}\n"
+                   f"Sample Type: {data['sample_type']}\n"
+                   f"Status: {data['status']}\n"
+                   f"Registration Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                   f"Expected Completion: {expected_completion_time.strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+                   f"The sample will be ready for pickup in 2 hours.")
+            send_email(subject, body)
             return jsonify({"success": True}), 201
             
         return jsonify({
@@ -504,6 +553,10 @@ def register_sample():
         }), 500
 
     except Exception as e:
+        error_msg = f"Error registering sample: {str(e)}"
+        logger.error(error_msg)
+        send_email("Error in Sample Registration", 
+                  f"Failed to register sample with error:\n{error_msg}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -523,3 +576,31 @@ def add_headers(response):
 @api.route('/<path:path>')
 def catch_all(path):
     return send_from_directory('../public', 'index.html')
+
+@api.route('/update_expired_samples', methods=['POST'])
+@require_auth
+def update_expired_samples():
+    from ..main import collection
+    try:
+        # Calculate the timestamp for 2 hours ago
+        two_hours_ago = datetime.now(timezone.UTC) - timedelta(hours=2)
+        
+        # Update all expired "In Process" samples
+        result = collection.update_many(
+            {
+                "status": "In Process",
+                "timestamp": {"$lt": two_hours_ago}
+            },
+            {"$set": {"status": "Ready for Pickup"}}
+        )
+        
+        return jsonify({
+            "success": True,
+            "updated_count": result.modified_count
+        }), 200
+    except Exception as e:
+        logger.error(f"Error updating expired samples: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500

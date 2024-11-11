@@ -158,6 +158,16 @@ export const sampleService = {
       throw new Error('Failed to update sample with pickup data');
     }
   },
+
+  updateExpiredSamples: async () => {
+    try {
+      const response = await api.post('/update_expired_samples');
+      return response.data;
+    } catch (error) {
+      console.error('Error updating expired samples:', error);
+      throw error;
+    }
+  },
 };
 
 export const authService = {

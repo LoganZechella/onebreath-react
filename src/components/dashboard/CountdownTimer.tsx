@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react';
+import { sampleService } from '../../services/api';
 
 interface CountdownTimerProps {
   timestamp: string;
+  chipId: string;
+  sampleType: string;
+  currentStatus: string;
+  onStatusUpdate?: () => void;
 }
 
-export default function CountdownTimer({ timestamp }: CountdownTimerProps) {
+export default function CountdownTimer({ 
+  timestamp, 
+  chipId, 
+  sampleType, 
+  currentStatus,
+  onStatusUpdate 
+}: CountdownTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [showSeparator, setShowSeparator] = useState(true);
+  const [hasExpired, setHasExpired] = useState(false);
 
   useEffect(() => {
-    const calculateTimeRemaining = () => {
+    const calculateTimeRemaining = async () => {
       const startTime = new Date(timestamp).getTime();
       const endTime = startTime + (2 * 60 * 60 * 1000); // 2 hours in milliseconds
       const now = new Date().getTime();
@@ -17,6 +29,21 @@ export default function CountdownTimer({ timestamp }: CountdownTimerProps) {
 
       if (difference <= 0) {
         setTimeRemaining('Time expired');
+        
+        // Only update status if it's currently "In Process"
+        if (currentStatus === 'In Process' && !hasExpired) {
+          setHasExpired(true);
+          try {
+            await sampleService.updateSample({
+              chip_id: chipId,
+              status: 'Ready for Pickup',
+              sample_type: sampleType
+            });
+            onStatusUpdate?.();
+          } catch (error) {
+            console.error('Failed to update sample status:', error);
+          }
+        }
         return;
       }
 
@@ -41,11 +68,11 @@ export default function CountdownTimer({ timestamp }: CountdownTimerProps) {
       clearInterval(timeInterval);
       clearInterval(flashInterval);
     };
-  }, [timestamp, showSeparator]);
+  }, [timestamp, showSeparator, chipId, sampleType, currentStatus, hasExpired, onStatusUpdate]);
 
   return (
     <p className="text-sm text-gray-600 dark:text-gray-300">
-      {timeRemaining} remaining
+      {timeRemaining} {timeRemaining !== 'Time expired' ? 'remaining' : ''}
     </p>
   );
 } 
