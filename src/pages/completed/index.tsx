@@ -67,7 +67,7 @@ export default function CompletedSamples() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 py-6 max-w-full">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Completed Samples
@@ -163,7 +163,9 @@ export default function CompletedSamples() {
             ))}
           </div>
         ) : (
-          <CompletedSampleTable samples={samples} />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <CompletedSampleTable samples={samples} />
+          </div>
         )}
       </div>
     </>
