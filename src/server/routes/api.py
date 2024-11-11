@@ -121,7 +121,7 @@ def update_sample():
                        f"Previous Status: {current_sample.get('status', 'N/A')}\n"
                        f"New Status: {status}\n"
                        f"Sample Type: {sample_type or current_sample.get('sample_type', 'N/A')}\n"
-                       f"Update Time: {datetime.now(timezone.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                       f"Update Time: {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
                 send_email(subject, body)
             return jsonify({"success": True}), 200
         
@@ -583,7 +583,7 @@ def update_expired_samples():
     from ..main import collection
     try:
         # Calculate the timestamp for 2 hours ago
-        two_hours_ago = datetime.now(timezone.UTC) - timedelta(hours=2)
+        two_hours_ago = datetime.now(pytz.UTC) - timedelta(hours=2)
         
         # Update all expired "In Process" samples
         result = collection.update_many(
