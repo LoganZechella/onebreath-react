@@ -4,6 +4,21 @@ interface CompletedSampleTableProps {
   samples: Sample[];
 }
 
+const getSampleType = (sample: Sample): string => {
+  if (sample.sample_type) {
+    return sample.sample_type;
+  }
+  
+  switch (sample.location) {
+    case 'CT - Radiology':
+      return 'LC Negative';
+    case 'BCC - 3rd Floor Clinic':
+      return 'LC Positive';
+    default:
+      return 'Not specified';
+  }
+};
+
 export default function CompletedSampleTable({ samples }: CompletedSampleTableProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -85,7 +100,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {sample.sample_type || 'N/A'}
+                  {getSampleType(sample)}
                 </span>
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
