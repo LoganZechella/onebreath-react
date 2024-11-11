@@ -1,7 +1,8 @@
 export interface Sample {
   chip_id: string;
   status: string;
-  sample_type: string;
+  sample_type?: string;
+  location?: string;
   timestamp: string;
   patient_id?: string;
   expected_completion_time?: string;

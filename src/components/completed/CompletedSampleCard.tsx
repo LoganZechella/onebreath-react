@@ -4,6 +4,21 @@ interface CompletedSampleCardProps {
   sample: Sample;
 }
 
+const getSampleType = (sample: Sample): string => {
+  if (sample.sample_type) {
+    return sample.sample_type;
+  }
+  
+  switch (sample.location) {
+    case 'CT - Radiology':
+      return 'LC Negative';
+    case 'BCC - 3rd Floor Clinic':
+      return 'LC Positive';
+    default:
+      return 'Not specified';
+  }
+};
+
 export default function CompletedSampleCard({ sample }: CompletedSampleCardProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -33,7 +48,7 @@ export default function CompletedSampleCard({ sample }: CompletedSampleCardProps
 
       <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
         <p>
-          <span className="font-medium">Sample Type:</span> {sample.sample_type || 'Not specified'}
+          <span className="font-medium">Sample Type:</span> {getSampleType(sample)}
         </p>
         <p>
           <span className="font-medium">Batch Number:</span> {sample.batch_number || 'N/A'}
