@@ -94,9 +94,9 @@ export default function CompletedSamples() {
               Completed Samples
             </h1>
             <span className="px-3 py-1.5 text-sm font-medium rounded-full 
-                     bg-primary/10 dark:bg-primary-dark/20 
-                     text-primary-dark dark:text-primary-light
-                     border border-primary/20 dark:border-primary-light/20
+                     bg-primary/10 dark:bg-primary/20 
+                     text-primary dark:text-white
+                     border border-primary/20 dark:border-primary/30
                      shadow-sm">
               {sortedSamples.length} Total
             </span>
