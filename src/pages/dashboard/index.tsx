@@ -15,9 +15,13 @@ export default function Dashboard() {
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
 
-  // Check URL parameters immediately
-  const chipIdFromUrl = searchParams.get('chipID');
-  const showFormFromUrl = Boolean(chipIdFromUrl && /^P\d{5}$/.test(chipIdFromUrl));
+  // Handle direct URL access with chipID
+  useEffect(() => {
+    const chipID = searchParams.get('chipID');
+    if (chipID && /^P\d{5}$/.test(chipID)) {
+      setShowManualEntry(true);
+    }
+  }, [searchParams]);
 
   const fetchSamples = async () => {
     try {
@@ -91,14 +95,15 @@ export default function Dashboard() {
       />
 
       <SampleRegistrationForm
-        isOpen={showManualEntry || showFormFromUrl}
+        isOpen={showManualEntry}
         onClose={() => {
           setShowManualEntry(false);
-          // Clear URL parameters when closing the form
-          window.history.replaceState({}, '', window.location.pathname);
+          if (searchParams.get('chipID')) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
         }}
         onSubmit={handleSampleRegistration}
-        initialChipId={chipIdFromUrl || ''}
+        initialChipId={searchParams.get('chipID') || ''}
       />
 
       <Toaster position="top-right" />
