@@ -7,7 +7,7 @@ from google.cloud import storage
 from pymongo import MongoClient
 from openai import OpenAI
 import logging
-from server.utils.helpers import send_email
+from src.server.utils.helpers import send_email
 from src.server.config import Config
 from flask_apscheduler import APScheduler
 from datetime import datetime, timedelta
