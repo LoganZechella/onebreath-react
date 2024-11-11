@@ -63,7 +63,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               Patient ID
             </th>
             <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
-              Sample Type
+              Completed
             </th>
             <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
               Final Volume
@@ -75,7 +75,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               Error
             </th>
             <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
-              Completed
+              Sample Type
             </th>
             <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
               Status
@@ -100,7 +100,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {getSampleType(sample)}
+                  {formatDate(sample.timestamp)}
                 </span>
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
@@ -120,7 +120,7 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {formatDate(sample.timestamp)}
+                  {getSampleType(sample)}
                 </span>
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
