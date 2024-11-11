@@ -69,6 +69,11 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
     });
   };
 
+  const handleStatusUpdate = async () => {
+    // Refresh the samples list or update the local state
+    onPickupComplete?.();
+  };
+
   return (
     <>
       <div className="bg-white dark:bg-gray-700 rounded-lg shadow-md p-4">
@@ -111,7 +116,13 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
         {sample.status === 'In Process' && (
           <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
             <p>Started: {sample.timestamp ? formatStartTime(sample.timestamp) : 'Not started'}</p>
-            {sample.timestamp && <CountdownTimer timestamp={sample.timestamp} />}
+            <CountdownTimer 
+              timestamp={sample.timestamp}
+              chipId={sample.chip_id}
+              sampleType={sample.sample_type || 'Unknown'}
+              currentStatus={sample.status}
+              onStatusUpdate={handleStatusUpdate}
+            />
           </div>
         )}
       </div>

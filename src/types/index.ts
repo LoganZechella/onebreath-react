@@ -4,8 +4,8 @@ export interface Sample {
   sample_type?: string;
   location?: string;
   timestamp: string;
+  expected_completion_time: string;
   patient_id?: string;
-  expected_completion_time?: string;
   batch_number?: string;
   mfg_date?: string;
   final_volume?: number;

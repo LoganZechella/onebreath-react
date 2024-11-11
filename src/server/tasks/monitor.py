@@ -1,12 +1,12 @@
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import pytz
 from src.server.utils.helpers import send_email
 
 def check_and_update_samples(collection):
     while True:
-        current_time = datetime.now(pytz.utc)
+        current_time = datetime.now(timezone.UTC)
         samples_to_update = collection.find({
             "status": "In Process",
             "expected_completion_time": {"$lte": current_time}
