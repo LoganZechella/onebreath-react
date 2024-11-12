@@ -34,9 +34,10 @@ def require_admin(f):
         try:
             decoded_token = auth.verify_id_token(token)
             if not decoded_token.get('admin', False):
-                return jsonify({'error': 'Unauthorized'}), 403
+                return jsonify({'error': 'Unauthorized - Admin access required'}), 403
             return f(*args, **kwargs)
         except Exception as e:
+            print(f"Auth error: {str(e)}")
             return jsonify({'error': 'Invalid token'}), 401
             
     return decorated_function

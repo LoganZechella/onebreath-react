@@ -28,6 +28,10 @@ class AdminService {
       console.log('Connected to admin socket');
     });
 
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
     this.socket.on('log_update', (data) => {
       this.notifyListeners('log_update', data);
     });
@@ -41,77 +45,105 @@ class AdminService {
     });
   }
 
-  addListener(event: string, callback: (data: any) => void) {
+  public addListener(event: string, callback: (data: any) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)?.add(callback);
   }
 
-  removeListener(event: string, callback: (data: any) => void) {
+  public removeListener(event: string, callback: (data: any) => void): void {
     this.listeners.get(event)?.delete(callback);
   }
 
-  private notifyListeners(event: string, data: any) {
+  private notifyListeners(event: string, data: any): void {
     this.listeners.get(event)?.forEach(callback => callback(data));
   }
 
   private async getAuthHeaders() {
     const token = await auth.currentUser?.getIdToken();
+    if (!token) throw new Error('No auth token available');
     return {
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
   }
 
   async getServerHealth(): Promise<ServerHealth> {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/health`, {
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/health`, {
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Health check error:', error);
+      throw error;
     }
-    return response.json();
   }
 
   async getErrorLogs(days: number = 3): Promise<LogEntry[]> {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/admin/logs/error?days=${days}`,
-      {
-        headers: await this.getAuthHeaders(),
-        credentials: 'include',
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/logs/error?days=${days}`,
+        {
+          headers: await this.getAuthHeaders(),
+          credentials: 'include',
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    );
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching error logs:', error);
+      return [];
     }
-    return response.json();
   }
 
   async getRequestLogs(days: number = 3): Promise<RequestLog[]> {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
-      {
-        headers: await this.getAuthHeaders(),
-        credentials: 'include',
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
+        {
+          headers: await this.getAuthHeaders(),
+          credentials: 'include',
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    );
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching request logs:', error);
+      return [];
     }
-    return response.json();
   }
 
   async getMetrics(): Promise<PerformanceMetric[]> {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/metrics`, {
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/metrics`, {
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+      return [];
     }
-    return response.json();
   }
 
   disconnect() {
@@ -120,4 +152,4 @@ class AdminService {
   }
 }
 
-export const adminService = new AdminService(); 
+export const adminService = new AdminService();

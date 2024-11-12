@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import pytz
 import os
 from .routes.admin import admin_api, SocketIOHandler
+from flask_socketio import SocketIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["https://onebreathpilot.netlify.app", "http://localhost:3000"],
+         "origins": ["https://onebreathpilot.netlify.app", "http://localhost:5173"],
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
@@ -118,9 +119,11 @@ app.register_blueprint(admin_api, url_prefix='/admin')
 socket_handler = SocketIOHandler()
 logger.addHandler(socket_handler)
 
-# Initialize SocketIO
-from .socket import init_socketio
-socketio = init_socketio(app)
+# Initialize SocketIO with CORS support
+socketio = SocketIO(app, 
+    cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:5173"],
+    async_mode='gevent'
+)
 
 # Initialize Firebase Admin SDK if not already initialized
 if not firebase_admin._apps:
@@ -144,4 +147,14 @@ def add_security_headers(response):
         "https://*.firebaseapp.com https://*.googleapis.com " \
         "https://identitytoolkit.googleapis.com; " \
         "script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+    return response
+
+@app.after_request
+def add_headers(response):
+    origin = request.headers.get('Origin')
+    if origin in ["https://onebreathpilot.netlify.app", "http://localhost:5173"]:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
