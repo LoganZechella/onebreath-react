@@ -42,41 +42,14 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
 
-# Register scheduled task
-@scheduler.task('interval', id='update_expired_samples', seconds=300)  # runs every 5 minutes
-def scheduled_update_expired_samples():
-    with app.app_context():
-        try:
-            # Calculate the timestamp for 2 hours ago using pytz
-            two_hours_ago = datetime.now(pytz.UTC) - timedelta(hours=2)
-            
-            # Find samples that need updating
-            expired_samples = collection.find({
-                "status": "In Process",
-                "timestamp": {"$lt": two_hours_ago}
-            })
-            
-            # Update samples and send notifications
-            for sample in expired_samples:
-                result = collection.update_one(
-                    {"_id": sample["_id"]},
-                    {"$set": {"status": "Ready for Pickup"}}
-                )
-                
-                if result.modified_count > 0:
-                    subject = f"Sample Ready for Pickup: {sample['chip_id']}"
-                    body = (f"Sample with chip ID {sample['chip_id']} is now ready for pickup.\n"
-                           f"Sample Type: {sample.get('sample_type', 'N/A')}\n"
-                           f"Patient ID: {sample.get('patient_id', 'N/A')}\n"
-                           f"Time Registered: {sample['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
-                    send_email(subject, body)
-                    logger.info(f"Updated sample {sample['chip_id']} to Ready for Pickup")
-                
-        except Exception as e:
-            error_msg = f"Scheduled task error: {str(e)}"
-            logger.error(error_msg)
-            with app.app_context():
-                send_email("Error in Sample Update Task", error_msg)
+# Initialize SocketIO with specific configuration for production
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:5173"],
+    async_mode='eventlet',  # Changed from 'gevent' to 'eventlet'
+    logger=True,
+    engineio_logger=True
+)
 
 try:
     # Firebase Admin SDK initialization
@@ -108,46 +81,12 @@ except Exception as e:
 from .routes.api import api
 app.register_blueprint(api)
 
-# Start background monitoring
-from .tasks.monitor import start_monitoring
-start_monitoring(collection)
-
 # Add the admin blueprint
 app.register_blueprint(admin_api, url_prefix='/admin')
 
 # Configure logging with SocketIO handler
 socket_handler = SocketIOHandler()
 logger.addHandler(socket_handler)
-
-# Initialize SocketIO with CORS support
-socketio = SocketIO(app, 
-    cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:5173"],
-    async_mode='gevent'
-)
-
-# Initialize Firebase Admin SDK if not already initialized
-if not firebase_admin._apps:
-    cred = credentials.Certificate(os.getenv('FIREBASE_ADMIN_SDK_PATH'))
-    firebase_admin.initialize_app(cred)
-
-# Make socketio available to other modules
-__all__ = ['socketio']
-
-@app.teardown_appcontext
-def cleanup(exception=None):
-    client = getattr(app, 'mongodb_client', None)
-    if client:
-        client.close()
-
-@app.after_request
-def add_security_headers(response):
-    response.headers['Content-Security-Policy'] = "default-src 'self'; " \
-        "connect-src 'self' https://onebreath-react.onrender.com " \
-        "wss://onebreath-react.onrender.com " \
-        "https://*.firebaseapp.com https://*.googleapis.com " \
-        "https://identitytoolkit.googleapis.com; " \
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval';"
-    return response
 
 @app.after_request
 def add_headers(response):
@@ -158,3 +97,7 @@ def add_headers(response):
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
+
+# Make sure this is at the end of the file
+if __name__ == '__main__':
+    socketio.run(app)
