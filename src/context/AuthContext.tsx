@@ -15,8 +15,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Get the ID token to ensure we have the latest claims
+        const idTokenResult = await user.getIdTokenResult(true);
+        const customUser: CustomUser = {
+          ...user,
+          claims: idTokenResult.claims
+        };
+        setUser(customUser);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
