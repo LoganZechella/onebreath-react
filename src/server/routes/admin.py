@@ -8,7 +8,7 @@ import threading
 from firebase_admin import auth
 
 # Initialize SocketIO (this should be imported from main.py)
-from ..main import socketio
+from ..socket import socketio
 
 admin_api = Blueprint('admin_api', __name__)
 
