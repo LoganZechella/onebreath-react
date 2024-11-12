@@ -12,6 +12,9 @@ from src.server.config import Config
 from flask_apscheduler import APScheduler
 from datetime import datetime, timedelta
 import pytz
+from flask_socketio import SocketIO
+from .routes.admin import admin_api, SocketIOHandler
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -108,6 +111,24 @@ app.register_blueprint(api)
 # Start background monitoring
 from .tasks.monitor import start_monitoring
 start_monitoring(collection)
+
+# Add the admin blueprint
+app.register_blueprint(admin_api, url_prefix='/admin')
+
+# Configure logging with SocketIO handler
+socket_handler = SocketIOHandler()
+logger.addHandler(socket_handler)
+
+# Initialize SocketIO (this should be imported from main.py)
+socketio = SocketIO(app, cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:3000"])
+
+# Initialize Firebase Admin SDK if not already initialized
+if not firebase_admin._apps:
+    cred = credentials.Certificate(os.getenv('FIREBASE_ADMIN_SDK_PATH'))
+    firebase_admin.initialize_app(cred)
+
+# Make socketio available to other modules
+__all__ = ['socketio']
 
 @app.teardown_appcontext
 def cleanup(exception=None):

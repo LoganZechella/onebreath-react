@@ -10,17 +10,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "aos": "^2.3.4",
+    "@types/socket.io-client": "^1.4.36",
     "animate.css": "^4.1.1",
+    "aos": "^2.3.4",
     "axios": "^1.6.7",
     "chart.js": "^4.4.1",
     "d3": "^7.8.5",
     "firebase": "^10.8.0",
+    "html5-qrcode": "^2.3.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.22.0",
-    "html5-qrcode": "^2.3.8"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@types/aos": "^3.0.7",

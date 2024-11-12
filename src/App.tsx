@@ -6,6 +6,7 @@ import Completed from './pages/completed';
 import DataViewer from './pages/data';
 import Login from './pages/login';
 import Layout from './components/layout/Layout';
+import AdminDashboard from './pages/admin';
 
 function App() {
   return (
@@ -27,6 +28,11 @@ function App() {
             <Route path="/data" element={
               <ProtectedRoute>
                 <DataViewer />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminDashboard />
               </ProtectedRoute>
             } />
             {/* Catch all route */}
