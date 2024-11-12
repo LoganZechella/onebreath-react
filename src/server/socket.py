@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(all=True)
 
 from flask_socketio import SocketIO
 

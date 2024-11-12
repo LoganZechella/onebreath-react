@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch(all=True)
+
 from flask import Flask, request, current_app
 from flask_cors import CORS
 from flask_mail import Mail
@@ -15,7 +18,6 @@ import pytz
 import os
 from .routes.admin import admin_api, SocketIOHandler
 from flask_socketio import SocketIO
-import eventlet
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,8 +55,9 @@ socketio = SocketIO(
     ping_timeout=60
 )
 
-# Create application context
-app.app_context().push()
+# Create application context immediately
+ctx = app.app_context()
+ctx.push()
 
 try:
     # Firebase Admin SDK initialization
