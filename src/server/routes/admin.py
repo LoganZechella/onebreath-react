@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_socketio import emit, SocketIO
 from functools import wraps
 import logging
@@ -85,20 +85,21 @@ def get_metrics():
 class SocketIOHandler(logging.Handler):
     def emit(self, record):
         try:
-            log_entry = {
-                'timestamp': datetime.now(UTC).isoformat(),
-                'level': record.levelname,
-                'message': record.getMessage(),
-                'module': record.module,
-                'funcName': record.funcName,
-                'lineNo': record.lineno,
-            }
-            
-            with metrics_store.lock:
-                metrics_store.error_logs.append(log_entry)
-            
-            # Emit to all connected admin clients
-            emit('log_update', log_entry, namespace='/admin')
+            with current_app.app_context():
+                log_entry = {
+                    'timestamp': datetime.now(UTC).isoformat(),
+                    'level': record.levelname,
+                    'message': record.getMessage(),
+                    'module': record.module,
+                    'funcName': record.funcName,
+                    'lineNo': record.lineno,
+                }
+                
+                with metrics_store.lock:
+                    metrics_store.error_logs.append(log_entry)
+                
+                # Emit to all connected admin clients
+                socketio.emit('log_update', log_entry, namespace='/admin')
         except Exception as e:
             print(f"Error in SocketIOHandler: {e}")
 

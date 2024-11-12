@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, current_app
 from flask_cors import CORS
 from flask_mail import Mail
 import firebase_admin
@@ -15,6 +15,7 @@ import pytz
 import os
 from .routes.admin import admin_api, SocketIOHandler
 from flask_socketio import SocketIO
+import eventlet
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,8 +49,12 @@ socketio = SocketIO(
     cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:5173"],
     async_mode='eventlet',  # Changed from 'gevent' to 'eventlet'
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
+    ping_timeout=60
 )
+
+# Create application context
+app.app_context().push()
 
 try:
     # Firebase Admin SDK initialization
