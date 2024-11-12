@@ -20,6 +20,7 @@ from .routes.admin import admin_api, SocketIOHandler
 from flask_socketio import SocketIO
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import time
+from src.server.utils.mongo import create_mongo_client, test_connection
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -61,39 +62,22 @@ socketio = SocketIO(
 ctx = app.app_context()
 ctx.push()
 
-def connect_with_retry(uri, max_retries=3, delay=2):
-    for attempt in range(max_retries):
-        try:
-            client = MongoClient(
-                uri,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=5000,
-                socketTimeoutMS=5000,
-                directConnection=True,
-                retryWrites=True,
-                dns_resolver_kwargs={'ignore_errors': False},
-            )
-            # Test connection
-            client.admin.command('ping')
-            return client
-        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-            if attempt == max_retries - 1:
-                raise
-            logger.warning(f"MongoDB connection attempt {attempt + 1} failed: {e}")
-            time.sleep(delay)
-
 try:
     # Firebase Admin SDK initialization
     cred = credentials.Certificate('/etc/secrets/Firebaseadminsdk.json')
     firebase_admin.initialize_app(cred)
     
-    # Initialize MongoDB client with retry
-    client = connect_with_retry(Config.MONGO_URI)
-    db = client[Config.DATABASE_NAME]
-    collection = db[Config.COLLECTION_NAME]
-    analyzed_collection = db[Config.ANALYZED_COLLECTION_NAME]
+    # Initialize MongoDB client
+    logger.info("Attempting to connect to MongoDB...")
+    client = create_mongo_client(Config.MONGO_URI)
     
-    logger.info("Successfully connected to MongoDB")
+    if test_connection(client):
+        logger.info("Successfully connected to MongoDB")
+        db = client[Config.DATABASE_NAME]
+        collection = db[Config.COLLECTION_NAME]
+        analyzed_collection = db[Config.ANALYZED_COLLECTION_NAME]
+    else:
+        raise ConnectionError("Failed to establish MongoDB connection")
     
     # Initialize GCS client
     storage_client = storage.Client.from_service_account_json(Config.GCS_CREDENTIALS)
