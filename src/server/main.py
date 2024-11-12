@@ -18,6 +18,8 @@ import pytz
 import os
 from .routes.admin import admin_api, SocketIOHandler
 from flask_socketio import SocketIO
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -59,19 +61,38 @@ socketio = SocketIO(
 ctx = app.app_context()
 ctx.push()
 
+def connect_with_retry(uri, max_retries=3, delay=2):
+    for attempt in range(max_retries):
+        try:
+            client = MongoClient(
+                uri,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=5000,
+                socketTimeoutMS=5000,
+                directConnection=True,
+                retryWrites=True,
+                dns_resolver_kwargs={'ignore_errors': False},
+            )
+            # Test connection
+            client.admin.command('ping')
+            return client
+        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+            if attempt == max_retries - 1:
+                raise
+            logger.warning(f"MongoDB connection attempt {attempt + 1} failed: {e}")
+            time.sleep(delay)
+
 try:
     # Firebase Admin SDK initialization
     cred = credentials.Certificate('/etc/secrets/Firebaseadminsdk.json')
     firebase_admin.initialize_app(cred)
     
-    # Initialize MongoDB client
-    client = MongoClient(Config.MONGO_URI)
+    # Initialize MongoDB client with retry
+    client = connect_with_retry(Config.MONGO_URI)
     db = client[Config.DATABASE_NAME]
     collection = db[Config.COLLECTION_NAME]
     analyzed_collection = db[Config.ANALYZED_COLLECTION_NAME]
     
-    # Test MongoDB connection
-    client.admin.command('ping')
     logger.info("Successfully connected to MongoDB")
     
     # Initialize GCS client

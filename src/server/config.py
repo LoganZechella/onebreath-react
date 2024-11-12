@@ -23,7 +23,10 @@ class Config:
     TWILIO_RECIPIENT_NUMBERS = os.getenv('TWILIO_RECIPIENT_NUMBERS', '').split(',')
     
     # MongoDB Configuration
-    MONGO_URI = os.getenv('MONGO_URI')
+    MONGO_URI = os.getenv('MONGO_URI', '').replace(
+        'mongodb+srv://',
+        'mongodb://'
+    ) if os.getenv('MONGO_URI') else None
     DATABASE_NAME = 'pilotstudy2024'
     COLLECTION_NAME = os.getenv('COLLECTION_NAME')
     ANALYZED_COLLECTION_NAME = os.getenv('ANALYZED_COLLECTION_NAME')
