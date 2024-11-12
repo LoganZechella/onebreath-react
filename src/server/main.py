@@ -135,3 +135,13 @@ def cleanup(exception=None):
     client = getattr(app, 'mongodb_client', None)
     if client:
         client.close()
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; " \
+        "connect-src 'self' https://onebreath-react.onrender.com " \
+        "wss://onebreath-react.onrender.com " \
+        "https://*.firebaseapp.com https://*.googleapis.com " \
+        "https://identitytoolkit.googleapis.com; " \
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+    return response

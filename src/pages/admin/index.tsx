@@ -21,12 +21,14 @@ export default function AdminDashboard() {
         ]);
 
         setHealth(healthData);
-        setErrorLogs(errors);
-        setRequestLogs(requests);
+        setErrorLogs(Array.isArray(errors) ? errors : []);
+        setRequestLogs(Array.isArray(requests) ? requests : []);
         setActiveConnections(healthData.active_connections);
       } catch (err) {
         setError('Failed to fetch admin data');
         console.error(err);
+        setErrorLogs([]);
+        setRequestLogs([]);
       } finally {
         setLoading(false);
       }

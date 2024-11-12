@@ -15,6 +15,7 @@ class AdminService {
     this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
       auth: { token },
       transports: ['websocket'],
+      withCredentials: true,
     });
 
     this.setupSocketListeners();
@@ -55,12 +56,22 @@ class AdminService {
     this.listeners.get(event)?.forEach(callback => callback(data));
   }
 
+  private async getAuthHeaders() {
+    const token = await auth.currentUser?.getIdToken();
+    return {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
   async getServerHealth(): Promise<ServerHealth> {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/health`, {
-      headers: {
-        Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
-      },
+      headers: await this.getAuthHeaders(),
+      credentials: 'include',
     });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     return response.json();
   }
 
@@ -68,11 +79,13 @@ class AdminService {
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/admin/logs/error?days=${days}`,
       {
-        headers: {
-          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
-        },
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
       }
     );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     return response.json();
   }
 
@@ -80,20 +93,24 @@ class AdminService {
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
       {
-        headers: {
-          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
-        },
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
       }
     );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     return response.json();
   }
 
   async getMetrics(): Promise<PerformanceMetric[]> {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/metrics`, {
-      headers: {
-        Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
-      },
+      headers: await this.getAuthHeaders(),
+      credentials: 'include',
     });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     return response.json();
   }
 
