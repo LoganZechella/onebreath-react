@@ -5,11 +5,11 @@ export interface Sample {
   location?: string;
   timestamp: string;
   expected_completion_time: string;
-  patient_id?: string;
+  patient_id: string;
   batch_number?: string;
   mfg_date?: string;
   final_volume?: number;
-  average_co2?: number;
+  average_co2?: string | number;
   error?: string;
   document_urls?: string[];
 }
@@ -21,7 +21,7 @@ export interface AnalyzedSample {
   location?: string;
   timestamp: string;
   patient_id: string;
-  average_co2: number;
+  average_co2: string | number;
   final_volume: number;
   status?: string;
   'Pentanal': number;
@@ -37,5 +37,6 @@ export interface AnalyzedSample {
 export interface PickupData {
   volume: number;
   co2_level: number;
+  patient_id: string;
   error?: string;
 }

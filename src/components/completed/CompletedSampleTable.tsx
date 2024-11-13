@@ -107,7 +107,11 @@ export default function CompletedSampleTable({ samples }: CompletedSampleTablePr
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {sample.average_co2 ? `${sample.average_co2}%` : 'N/A'}
+                  {sample.average_co2 
+                    ? `${typeof sample.average_co2 === 'string' 
+                        ? parseFloat(sample.average_co2).toFixed(1) 
+                        : sample.average_co2.toFixed(1)}%` 
+                    : 'N/A'}
                 </span>
               </td>
               <td className="px-3 py-2 whitespace-nowrap">

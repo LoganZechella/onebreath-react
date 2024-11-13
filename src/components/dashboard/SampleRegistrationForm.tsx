@@ -10,6 +10,7 @@ interface SampleRegistrationFormProps {
     chip_id: string;
     patient_id: string;
     sample_type: string;
+    timestamp: string;
   }) => Promise<void>;
   initialChipId?: string;
 }
@@ -64,7 +65,8 @@ export default function SampleRegistrationForm({
       await onSubmit({
         chip_id: chipId,
         patient_id: patientId,
-        sample_type: sampleType
+        sample_type: sampleType,
+        timestamp: new Date().toISOString()
       });
       
       toast.success('Sample registered successfully!', {

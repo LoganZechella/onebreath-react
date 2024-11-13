@@ -148,7 +148,9 @@ export default function DataViewer() {
         const groupedData: Record<string, number[]> = {};
         samples.forEach(sample => {
           const xValue = formatFieldValue(sample[xField as keyof AnalyzedSample], xField);
-          const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
+          const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
+            ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
+            : Number(sample[yField as keyof AnalyzedSample]);
           
           if (!isNaN(yValue)) {
             if (!groupedData[xValue]) {
@@ -167,7 +169,9 @@ export default function DataViewer() {
         const aggregatedData: Record<string, number[]> = {};
         samples.forEach(sample => {
           const key = String(sample[aggregationField as keyof AnalyzedSample]);
-          const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
+          const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
+            ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
+            : Number(sample[yField as keyof AnalyzedSample]);
 
           if (!isNaN(yValue)) {
             if (!aggregatedData[key]) {
@@ -192,7 +196,9 @@ export default function DataViewer() {
         samples.forEach(sample => {
           if (sample && typeof sample === 'object') {
             const xValue = formatFieldValue(sample[xField as keyof AnalyzedSample], xField);
-            const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
+            const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
+              ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
+              : Number(sample[yField as keyof AnalyzedSample]);
 
             if (!isNaN(yValue)) {
               processedData.labels.push(xValue);
@@ -206,7 +212,9 @@ export default function DataViewer() {
         samples.forEach(sample => {
           if (sample && typeof sample === 'object') {
             const key = String(sample[aggregationField as keyof AnalyzedSample]);
-            const yValue = parseFloat(String(sample[yField as keyof AnalyzedSample]));
+            const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
+              ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
+              : Number(sample[yField as keyof AnalyzedSample]);
 
             if (!isNaN(yValue)) {
               if (!aggregatedData[key]) {

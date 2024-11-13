@@ -1,11 +1,7 @@
-import os
-import sys
+import eventlet
+eventlet.monkey_patch(all=True)
 
-# Add the project root directory to Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from src.server.main import app, socketio
 
-from src.server.main import app
-
-if __name__ == "__main__":
-    port = int(os.getenv('PORT', 5000))
-    app.run(host='0.0.0.0', port=port) 
+if __name__ == '__main__':
+    socketio.run(app) 

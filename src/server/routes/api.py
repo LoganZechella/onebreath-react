@@ -94,6 +94,8 @@ def update_sample():
         chip_id = update_data.get('chip_id')
         status = update_data.get('status')
         sample_type = update_data.get('sample_type')
+        patient_id = update_data.get('patient_id')
+        timestamp = update_data.get('timestamp')
 
         if not chip_id:
             return jsonify({"success": False, "error": "Chip ID is required"}), 400
@@ -106,6 +108,10 @@ def update_sample():
         update_fields = {"status": status} if status else {}
         if sample_type:
             update_fields["sample_type"] = sample_type
+        if patient_id:
+            update_fields["patient_id"] = patient_id
+        if timestamp:
+            update_fields["timestamp"] = timestamp
 
         result = collection.update_one(
             {"chip_id": chip_id},
@@ -121,7 +127,8 @@ def update_sample():
                        f"Previous Status: {current_sample.get('status', 'N/A')}\n"
                        f"New Status: {status}\n"
                        f"Sample Type: {sample_type or current_sample.get('sample_type', 'N/A')}\n"
-                       f"Update Time: {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                       f"Patient ID: {patient_id or current_sample.get('patient_id', 'N/A')}\n"
+                       f"Update Time: {timestamp or datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
                 send_email(subject, body)
             return jsonify({"success": True}), 200
         
@@ -502,7 +509,7 @@ def register_sample():
     from ..main import collection
     try:
         data = request.json
-        required_fields = ['chip_id', 'patient_id', 'sample_type', 'status', 'timestamp']
+        required_fields = ['chip_id', 'patient_id', 'sample_type', 'status']
         
         if not all(field in data for field in required_fields):
             return jsonify({
@@ -510,26 +517,32 @@ def register_sample():
                 "error": f"Missing required fields. Required: {', '.join(required_fields)}"
             }), 400
 
-        # Convert ISO timestamp string to datetime object
+        # Parse timestamp just for expected_completion_time calculation
         try:
-            timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
-            timestamp = timestamp.replace(tzinfo=None)
-            # Calculate expected completion time (2 hours after timestamp)
-            expected_completion_time = timestamp + timedelta(hours=2)
-        except ValueError:
+            timestamp_dt = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+            timestamp_dt = timestamp_dt.replace(tzinfo=timezone.utc)
+            expected_completion_time = (timestamp_dt + timedelta(hours=2)).isoformat()
+        except ValueError as e:
             return jsonify({
                 "success": False,
-                "error": "Invalid timestamp format. Use ISO format."
+                "error": f"Invalid timestamp format. Use ISO format. Error: {str(e)}"
             }), 400
 
+        # Create new sample document with all required fields
         new_sample = {
             "chip_id": data['chip_id'],
             "patient_id": data['patient_id'],
             "sample_type": data['sample_type'],
             "status": data['status'],
-            "timestamp": timestamp,
-            "expected_completion_time": expected_completion_time
+            "timestamp": data['timestamp'],  # Store original timestamp as string
+            "expected_completion_time": expected_completion_time,  # Store calculated time as ISO string
+            # Add any existing fields from the request that might be present
+            "batch_number": data.get('batch_number'),
+            "mfg_date": data.get('mfg_date')
         }
+
+        # Remove None values to keep the document clean
+        new_sample = {k: v for k, v in new_sample.items() if v is not None}
 
         result = collection.insert_one(new_sample)
         
@@ -541,8 +554,8 @@ def register_sample():
                    f"Patient ID: {data['patient_id']}\n"
                    f"Sample Type: {data['sample_type']}\n"
                    f"Status: {data['status']}\n"
-                   f"Registration Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-                   f"Expected Completion: {expected_completion_time.strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+                   f"Registration Time: {timestamp_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                   f"Expected Completion: {expected_completion_time}\n\n"
                    f"The sample will be ready for pickup in 2 hours.")
             send_email(subject, body)
             return jsonify({"success": True}), 201

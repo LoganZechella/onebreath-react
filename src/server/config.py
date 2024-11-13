@@ -24,6 +24,9 @@ class Config:
     
     # MongoDB Configuration
     MONGO_URI = os.getenv('MONGO_URI')
+    if not MONGO_URI:
+        raise ValueError("MONGO_URI environment variable is not set")
+    
     DATABASE_NAME = 'pilotstudy2024'
     COLLECTION_NAME = os.getenv('COLLECTION_NAME')
     ANALYZED_COLLECTION_NAME = os.getenv('ANALYZED_COLLECTION_NAME')

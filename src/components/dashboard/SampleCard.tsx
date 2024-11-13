@@ -6,7 +6,7 @@ import CountdownTimer from './CountdownTimer';
 
 interface SampleCardProps {
   sample: Sample;
-  onUpdateStatus: (chipId: string, status: string, sampleType: string) => Promise<void>;
+  onUpdateStatus: (chipId: string, status: string, sampleType: string, patientId: string) => Promise<void>;
   onPickupComplete?: () => Promise<void>;
 }
 
@@ -21,28 +21,34 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
       } else if (newStatus === 'Complete') {
         setShowCompleteConfirm(true);
       } else {
-        await onUpdateStatus(sample.chip_id, newStatus, sample.sample_type || '');
+        await onUpdateStatus(
+          sample.chip_id,
+          newStatus,
+          sample.sample_type || '',
+          sample.patient_id || 'Unknown'
+        );
       }
     } catch (error) {
       console.error('Error updating sample status:', error);
     }
   };
 
-  const handlePickupFormSubmit = async (chipId: string, volume: number, co2: number, error?: string) => {
+  const handlePickupFormSubmit = async (chipId: string, volume: number, co2: number, patientId: string, error?: string) => {
     try {
       const pickupData: PickupData = {
         volume,
         co2_level: co2,
+        patient_id: patientId,
         error
       };
-      
+
       await updateSampleWithPickupData(
         chipId,
         'Picked up. Ready for Analysis',
         sample.sample_type || '',
         pickupData
       );
-      
+
       setShowPickupForm(false);
       if (onPickupComplete) {
         await onPickupComplete();
@@ -54,7 +60,12 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
 
   const handleCompleteConfirm = async () => {
     try {
-      await onUpdateStatus(sample.chip_id, 'Complete', sample.sample_type || '');
+      await onUpdateStatus(
+        sample.chip_id,
+        'Complete',
+        sample.sample_type || '',
+        sample.patient_id || 'Unknown'
+      );
       setShowCompleteConfirm(false);
     } catch (error) {
       console.error('Error completing sample:', error);
@@ -62,11 +73,20 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
   };
 
   const formatStartTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      return date.toLocaleString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Invalid date';
+    }
   };
 
   const handleStatusUpdate = async () => {
@@ -116,7 +136,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
         {sample.status === 'In Process' && (
           <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
             <p>Started: {sample.timestamp ? formatStartTime(sample.timestamp) : 'Not started'}</p>
-            <CountdownTimer 
+            <CountdownTimer
               timestamp={sample.timestamp}
               chipId={sample.chip_id}
               sampleType={sample.sample_type || 'Unknown'}
@@ -129,6 +149,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
 
       <PickupForm
         chipId={sample.chip_id}
+        patientId={sample.patient_id || 'Unknown'}
         isOpen={showPickupForm}
         onClose={() => setShowPickupForm(false)}
         onSubmit={handlePickupFormSubmit}

@@ -1,4 +1,7 @@
-from flask import Flask, request
+import eventlet
+eventlet.monkey_patch(all=True)
+
+from flask import Flask, request, current_app
 from flask_cors import CORS
 from flask_mail import Mail
 import firebase_admin
@@ -12,6 +15,12 @@ from src.server.config import Config
 from flask_apscheduler import APScheduler
 from datetime import datetime, timedelta
 import pytz
+import os
+from .routes.admin import admin_api, SocketIOHandler
+from flask_socketio import SocketIO
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+import time
+from src.server.utils.mongo import create_mongo_client, test_connection
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +31,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["https://onebreathpilot.netlify.app", "http://localhost:3000"],
+         "origins": ["https://onebreathpilot.netlify.app", "http://localhost:5173"],
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
@@ -39,41 +48,19 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
 
-# Register scheduled task
-@scheduler.task('interval', id='update_expired_samples', seconds=300)  # runs every 5 minutes
-def scheduled_update_expired_samples():
-    with app.app_context():
-        try:
-            # Calculate the timestamp for 2 hours ago using pytz
-            two_hours_ago = datetime.now(pytz.UTC) - timedelta(hours=2)
-            
-            # Find samples that need updating
-            expired_samples = collection.find({
-                "status": "In Process",
-                "timestamp": {"$lt": two_hours_ago}
-            })
-            
-            # Update samples and send notifications
-            for sample in expired_samples:
-                result = collection.update_one(
-                    {"_id": sample["_id"]},
-                    {"$set": {"status": "Ready for Pickup"}}
-                )
-                
-                if result.modified_count > 0:
-                    subject = f"Sample Ready for Pickup: {sample['chip_id']}"
-                    body = (f"Sample with chip ID {sample['chip_id']} is now ready for pickup.\n"
-                           f"Sample Type: {sample.get('sample_type', 'N/A')}\n"
-                           f"Patient ID: {sample.get('patient_id', 'N/A')}\n"
-                           f"Time Registered: {sample['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
-                    send_email(subject, body)
-                    logger.info(f"Updated sample {sample['chip_id']} to Ready for Pickup")
-                
-        except Exception as e:
-            error_msg = f"Scheduled task error: {str(e)}"
-            logger.error(error_msg)
-            with app.app_context():
-                send_email("Error in Sample Update Task", error_msg)
+# Initialize SocketIO with specific configuration for production
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:5173"],
+    async_mode='eventlet',  # Changed from 'gevent' to 'eventlet'
+    logger=True,
+    engineio_logger=True,
+    ping_timeout=60
+)
+
+# Create application context immediately
+ctx = app.app_context()
+ctx.push()
 
 try:
     # Firebase Admin SDK initialization
@@ -81,14 +68,16 @@ try:
     firebase_admin.initialize_app(cred)
     
     # Initialize MongoDB client
-    client = MongoClient(Config.MONGO_URI)
-    db = client[Config.DATABASE_NAME]
-    collection = db[Config.COLLECTION_NAME]
-    analyzed_collection = db[Config.ANALYZED_COLLECTION_NAME]
+    logger.info("Attempting to connect to MongoDB...")
+    client = create_mongo_client(Config.MONGO_URI)
     
-    # Test MongoDB connection
-    client.admin.command('ping')
-    logger.info("Successfully connected to MongoDB")
+    if test_connection(client):
+        logger.info("Successfully connected to MongoDB")
+        db = client[Config.DATABASE_NAME]
+        collection = db[Config.COLLECTION_NAME]
+        analyzed_collection = db[Config.ANALYZED_COLLECTION_NAME]
+    else:
+        raise ConnectionError("Failed to establish MongoDB connection")
     
     # Initialize GCS client
     storage_client = storage.Client.from_service_account_json(Config.GCS_CREDENTIALS)
@@ -105,12 +94,23 @@ except Exception as e:
 from .routes.api import api
 app.register_blueprint(api)
 
-# Start background monitoring
-from .tasks.monitor import start_monitoring
-start_monitoring(collection)
+# Add the admin blueprint
+app.register_blueprint(admin_api, url_prefix='/admin')
 
-@app.teardown_appcontext
-def cleanup(exception=None):
-    client = getattr(app, 'mongodb_client', None)
-    if client:
-        client.close()
+# Configure logging with SocketIO handler
+socket_handler = SocketIOHandler()
+logger.addHandler(socket_handler)
+
+@app.after_request
+def add_headers(response):
+    origin = request.headers.get('Origin')
+    if origin in ["https://onebreathpilot.netlify.app", "http://localhost:5173"]:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
+
+# Make sure this is at the end of the file
+if __name__ == '__main__':
+    socketio.run(app)
