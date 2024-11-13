@@ -94,6 +94,7 @@ def update_sample():
         chip_id = update_data.get('chip_id')
         status = update_data.get('status')
         sample_type = update_data.get('sample_type')
+        patient_id = update_data.get('patient_id')
 
         if not chip_id:
             return jsonify({"success": False, "error": "Chip ID is required"}), 400
@@ -106,6 +107,8 @@ def update_sample():
         update_fields = {"status": status} if status else {}
         if sample_type:
             update_fields["sample_type"] = sample_type
+        if patient_id:
+            update_fields["patient_id"] = patient_id
 
         result = collection.update_one(
             {"chip_id": chip_id},
@@ -121,6 +124,7 @@ def update_sample():
                        f"Previous Status: {current_sample.get('status', 'N/A')}\n"
                        f"New Status: {status}\n"
                        f"Sample Type: {sample_type or current_sample.get('sample_type', 'N/A')}\n"
+                       f"Patient ID: {patient_id or current_sample.get('patient_id', 'N/A')}\n"
                        f"Update Time: {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
                 send_email(subject, body)
             return jsonify({"success": True}), 200
