@@ -140,26 +140,6 @@ export const sampleService = {
     return response.data;
   },
 
-  updateSampleWithPickupData: async (
-    chipId: string, 
-    status: string, 
-    sampleType: string, 
-    pickupData: PickupData
-  ): Promise<void> => {
-    const response = await api.put(`/samples/${chipId}/pickup`, {
-      status,
-      sample_type: sampleType,
-      average_co2: pickupData.co2_level,
-      final_volume: pickupData.volume,
-      patient_id: pickupData.patient_id,
-      ...(pickupData.error && { error: pickupData.error })
-    });
-
-    if (!response.data.success) {
-      throw new Error('Failed to update sample with pickup data');
-    }
-  },
-
   updateExpiredSamples: async () => {
     try {
       const response = await api.post('/update_expired_samples');

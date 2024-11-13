@@ -9,7 +9,7 @@ export interface Sample {
   batch_number?: string;
   mfg_date?: string;
   final_volume?: number;
-  average_co2?: number;
+  average_co2?: string | number;
   error?: string;
   document_urls?: string[];
 }
@@ -21,7 +21,7 @@ export interface AnalyzedSample {
   location?: string;
   timestamp: string;
   patient_id: string;
-  average_co2: number;
+  average_co2: string | number;
   final_volume: number;
   status?: string;
   'Pentanal': number;

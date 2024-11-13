@@ -63,7 +63,7 @@ export default function PickupForm({ chipId, patientId, isOpen, onClose, onSubmi
       await onSubmit(
         chipId,
         parseFloat(volume),
-        parseFloat(co2),
+        Number(parseFloat(co2).toFixed(1)),
         patientId,
         error || ''
       );

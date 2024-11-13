@@ -57,7 +57,13 @@ export default function CompletedSampleCard({ sample }: CompletedSampleCardProps
           <span className="font-medium">Final Volume:</span> {sample.final_volume ? `${sample.final_volume} mL` : 'N/A'}
         </p>
         <p>
-          <span className="font-medium">Average CO2:</span> {sample.average_co2 ? `${sample.average_co2}%` : 'N/A'}
+          <span className="font-medium">Average CO2:</span> {
+            sample.average_co2 
+              ? `${typeof sample.average_co2 === 'string' 
+                  ? parseFloat(sample.average_co2).toFixed(1) 
+                  : sample.average_co2.toFixed(1)}%` 
+              : 'N/A'
+          }
         </p>
         {sample.error && (
           <p className="text-red-600 dark:text-red-400">
