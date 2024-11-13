@@ -5,7 +5,7 @@ export interface Sample {
   location?: string;
   timestamp: string;
   expected_completion_time: string;
-  patient_id?: string;
+  patient_id: string;
   batch_number?: string;
   mfg_date?: string;
   final_volume?: number;
@@ -37,5 +37,6 @@ export interface AnalyzedSample {
 export interface PickupData {
   volume: number;
   co2_level: number;
+  patient_id: string;
   error?: string;
 }

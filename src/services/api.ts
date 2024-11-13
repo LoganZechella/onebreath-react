@@ -151,6 +151,7 @@ export const sampleService = {
       sample_type: sampleType,
       average_co2: pickupData.co2_level,
       final_volume: pickupData.volume,
+      patient_id: pickupData.patient_id,
       ...(pickupData.error && { error: pickupData.error })
     });
 
@@ -193,6 +194,7 @@ export const updateSampleWithPickupData = async (
     sample_type: sampleType,
     average_co2: pickupData.co2_level,
     final_volume: pickupData.volume,
+    patient_id: pickupData.patient_id,
     ...(pickupData.error && { error: pickupData.error })
   });
 
