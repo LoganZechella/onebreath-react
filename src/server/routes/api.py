@@ -516,7 +516,7 @@ def register_sample():
 
         # Convert ISO timestamp string to datetime object
         try:
-            # Fix: Parse the timestamp correctly from ISO format
+            # Parse the timestamp correctly from ISO format
             timestamp = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
             # Calculate expected completion time (2 hours after timestamp)
             expected_completion_time = timestamp + timedelta(hours=2)
@@ -526,14 +526,21 @@ def register_sample():
                 "error": f"Invalid timestamp format. Use ISO format. Error: {str(e)}"
             }), 400
 
+        # Create new sample document with all required fields
         new_sample = {
             "chip_id": data['chip_id'],
             "patient_id": data['patient_id'],
             "sample_type": data['sample_type'],
             "status": data['status'],
-            "timestamp": timestamp,  # This will now be a proper datetime object
-            "expected_completion_time": expected_completion_time
+            "timestamp": timestamp,
+            "expected_completion_time": expected_completion_time,
+            # Add any existing fields from the request that might be present
+            "batch_number": data.get('batch_number'),
+            "mfg_date": data.get('mfg_date')
         }
+
+        # Remove None values to keep the document clean
+        new_sample = {k: v for k, v in new_sample.items() if v is not None}
 
         result = collection.insert_one(new_sample)
         
