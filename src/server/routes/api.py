@@ -514,10 +514,11 @@ def register_sample():
                 "error": f"Missing required fields. Required: {', '.join(required_fields)}"
             }), 400
 
-        # Convert ISO timestamp string to datetime object
+        # Convert ISO timestamp string to datetime object with UTC timezone
         try:
-            # Parse the timestamp correctly from ISO format
+            # Parse the timestamp and make it timezone-aware
             timestamp = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
             # Calculate expected completion time (2 hours after timestamp)
             expected_completion_time = timestamp + timedelta(hours=2)
         except ValueError as e:
