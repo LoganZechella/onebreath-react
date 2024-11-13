@@ -516,14 +516,14 @@ def register_sample():
 
         # Convert ISO timestamp string to datetime object
         try:
-            timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
-            timestamp = timestamp.replace(tzinfo=None)
+            # Fix: Parse the timestamp correctly from ISO format
+            timestamp = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
             # Calculate expected completion time (2 hours after timestamp)
             expected_completion_time = timestamp + timedelta(hours=2)
-        except ValueError:
+        except ValueError as e:
             return jsonify({
                 "success": False,
-                "error": "Invalid timestamp format. Use ISO format."
+                "error": f"Invalid timestamp format. Use ISO format. Error: {str(e)}"
             }), 400
 
         new_sample = {
@@ -531,7 +531,7 @@ def register_sample():
             "patient_id": data['patient_id'],
             "sample_type": data['sample_type'],
             "status": data['status'],
-            "timestamp": timestamp,
+            "timestamp": timestamp,  # This will now be a proper datetime object
             "expected_completion_time": expected_completion_time
         }
 
