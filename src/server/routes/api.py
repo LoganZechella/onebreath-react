@@ -514,13 +514,11 @@ def register_sample():
                 "error": f"Missing required fields. Required: {', '.join(required_fields)}"
             }), 400
 
-        # Convert ISO timestamp string to datetime object with UTC timezone
+        # Parse timestamp just for expected_completion_time calculation
         try:
-            # Parse the timestamp and make it timezone-aware
-            timestamp = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
-            # Calculate expected completion time (2 hours after timestamp)
-            expected_completion_time = timestamp + timedelta(hours=2)
+            timestamp_dt = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+            timestamp_dt = timestamp_dt.replace(tzinfo=timezone.utc)
+            expected_completion_time = (timestamp_dt + timedelta(hours=2)).isoformat()
         except ValueError as e:
             return jsonify({
                 "success": False,
@@ -533,8 +531,8 @@ def register_sample():
             "patient_id": data['patient_id'],
             "sample_type": data['sample_type'],
             "status": data['status'],
-            "timestamp": timestamp,
-            "expected_completion_time": expected_completion_time,
+            "timestamp": data['timestamp'],  # Store original timestamp as string
+            "expected_completion_time": expected_completion_time,  # Store calculated time as ISO string
             # Add any existing fields from the request that might be present
             "batch_number": data.get('batch_number'),
             "mfg_date": data.get('mfg_date')
@@ -553,8 +551,8 @@ def register_sample():
                    f"Patient ID: {data['patient_id']}\n"
                    f"Sample Type: {data['sample_type']}\n"
                    f"Status: {data['status']}\n"
-                   f"Registration Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-                   f"Expected Completion: {expected_completion_time.strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+                   f"Registration Time: {timestamp_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                   f"Expected Completion: {expected_completion_time}\n\n"
                    f"The sample will be ready for pickup in 2 hours.")
             send_email(subject, body)
             return jsonify({"success": True}), 201

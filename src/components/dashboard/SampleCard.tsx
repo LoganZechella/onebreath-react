@@ -73,11 +73,20 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
   };
 
   const formatStartTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      return date.toLocaleString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Invalid date';
+    }
   };
 
   const handleStatusUpdate = async () => {

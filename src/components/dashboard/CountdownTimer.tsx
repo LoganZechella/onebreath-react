@@ -58,21 +58,29 @@ export default function CountdownTimer({
       setTimeRemaining(`${formattedHours}${showSeparator ? ':' : ' '}${formattedMinutes}${showSeparator ? ':' : ' '}${formattedSeconds}`);
     };
 
-    calculateTimeRemaining();
-    const timeInterval = setInterval(calculateTimeRemaining, 1000);
-    const flashInterval = setInterval(() => {
-      setShowSeparator(prev => !prev);
-    }, 500);
+    if (timestamp) {
+      calculateTimeRemaining();
+      const timeInterval = setInterval(calculateTimeRemaining, 1000);
+      const flashInterval = setInterval(() => {
+        setShowSeparator(prev => !prev);
+      }, 500);
 
-    return () => {
-      clearInterval(timeInterval);
-      clearInterval(flashInterval);
-    };
+      return () => {
+        clearInterval(timeInterval);
+        clearInterval(flashInterval);
+      };
+    }
   }, [timestamp, showSeparator, chipId, sampleType, currentStatus, hasExpired, onStatusUpdate]);
 
   return (
     <p className="text-sm text-gray-600 dark:text-gray-300">
-      {timeRemaining} {timeRemaining !== 'Time expired' ? 'remaining' : ''}
+      {timeRemaining ? (
+        <>
+          {timeRemaining} {timeRemaining !== 'Time expired' ? 'remaining' : ''}
+        </>
+      ) : (
+        'Calculating...'
+      )}
     </p>
   );
 } 
