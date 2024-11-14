@@ -41,7 +41,10 @@ export default function DataViewer() {
   const numericFields = [
     'final_volume', 'average_co2', 'batch_number',
     '2-Butanone', 'Pentanal', 'Decanal', '2-hydroxy-acetaldehyde',
-    '2-hydroxy-3-butanone', '4-HHE', '4HNE'
+    '2-hydroxy-3-butanone', '4-HHE', '4-HNE',
+    '2-Butanone_per_liter', 'Pentanal_per_liter', 'Decanal_per_liter',
+    '2-hydroxy-acetaldehyde_per_liter', '2-hydroxy-3-butanone_per_liter',
+    '4-HHE_per_liter', '4-HNE_per_liter'
   ];
   
   const dateFields = ['timestamp', 'mfg_date'];
@@ -57,13 +60,20 @@ export default function DataViewer() {
       'patient_id': 'Patient ID',
       'average_co2': 'Average CO2 (%)',
       'final_volume': 'Final Volume (mL)',
-      '2-Butanone': '2-Butanone (nmole/L breath)',
-      'Pentanal': 'Pentanal (nmole/L breath)',
-      'Decanal': 'Decanal (nmole/L breath)',
-      '2-hydroxy-acetaldehyde': '2-hydroxy-acetaldehyde (nmole/L breath)',
-      '2-hydroxy-3-butanone': '2-hydroxy-3-butanone (nmole/L breath)',
-      '4-HHE': '4-HHE (nmole/L breath)',
-      '4HNE': '4HNE (nmole/L breath)',
+      '2-Butanone': '2-Butanone (nmole)',
+      'Pentanal': 'Pentanal (nmole)',
+      'Decanal': 'Decanal (nmole)',
+      '2-hydroxy-acetaldehyde': '2-hydroxy-acetaldehyde (nmole)',
+      '2-hydroxy-3-butanone': '2-hydroxy-3-butanone (nmole)',
+      '4-HHE': '4-HHE (nmole)',
+      '4-HNE': '4-HNE (nmole)',
+      '2-Butanone_per_liter': '2-Butanone (nmole/L breath)',
+      'Pentanal_per_liter': 'Pentanal (nmole/L breath)',
+      'Decanal_per_liter': 'Decanal (nmole/L breath)',
+      '2-hydroxy-acetaldehyde_per_liter': '2-hydroxy-acetaldehyde (nmole/L breath)',
+      '2-hydroxy-3-butanone_per_liter': '2-hydroxy-3-butanone (nmole/L breath)',
+      '4-HHE_per_liter': '4-HHE (nmole/L breath)',
+      '4-HNE_per_liter': '4-HNE (nmole/L breath)',
       'Dx': 'Diagnosis'
     };
 
