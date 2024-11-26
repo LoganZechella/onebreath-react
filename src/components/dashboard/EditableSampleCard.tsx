@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sample } from '../../types';
 import EditableField from './EditableField';
+import CountdownTimer from './CountdownTimer';
 import toast from 'react-hot-toast';
 
 interface EditableSampleCardProps {
@@ -86,6 +87,23 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const formatStartTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      return date.toLocaleString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Invalid date';
     }
   };
 
@@ -179,6 +197,18 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
               <p className="text-sm text-gray-500 dark:text-gray-300">
                 Sample Type: {sample.sample_type || 'Not specified'}
               </p>
+              {sample.status === 'In Process' && (
+                <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1 mt-2">
+                  <p>Started: {sample.timestamp ? formatStartTime(sample.timestamp) : 'Not started'}</p>
+                  <CountdownTimer
+                    timestamp={sample.timestamp}
+                    chipId={sample.chip_id}
+                    sampleType={sample.sample_type || 'Unknown'}
+                    currentStatus={sample.status}
+                    onStatusUpdate={onPickupComplete}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex space-x-2">
               {sample.status === 'In Process' && (
