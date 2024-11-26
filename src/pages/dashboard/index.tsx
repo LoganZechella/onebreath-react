@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { sampleService } from '../../services/api';
 import { Sample } from '../../types';
-import SampleCard from '../../components/dashboard/SampleCard';
+import EditableSampleCard from '../../components/dashboard/EditableSampleCard';
 import QRScanner from '../../components/dashboard/QRScanner';
 import SampleRegistrationForm from '../../components/dashboard/SampleRegistrationForm';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -51,6 +52,17 @@ export default function Dashboard() {
       await fetchSamples();
     } catch (err) {
       setError('Failed to update sample');
+      console.error(err);
+    }
+  };
+
+  const handleSampleDataUpdate = async (updatedSample: Sample) => {
+    try {
+      await sampleService.updateSample(updatedSample);
+      await fetchSamples();
+      toast.success('Sample updated successfully');
+    } catch (err) {
+      toast.error('Failed to update sample');
       console.error(err);
     }
   };
@@ -164,10 +176,11 @@ export default function Dashboard() {
               {samples
                 .filter(sample => sample.status === 'In Process')
                 .map(sample => (
-                  <SampleCard 
+                  <EditableSampleCard 
                     key={sample.chip_id} 
                     sample={sample} 
                     onUpdateStatus={handleUpdateSample}
+                    onUpdateSample={handleSampleDataUpdate}
                     onPickupComplete={fetchSamples}
                   />
                 ))}
@@ -193,10 +206,11 @@ export default function Dashboard() {
               {samples
                 .filter(sample => sample.status === 'Ready for Pickup')
                 .map(sample => (
-                  <SampleCard 
+                  <EditableSampleCard 
                     key={sample.chip_id} 
                     sample={sample} 
                     onUpdateStatus={handleUpdateSample}
+                    onUpdateSample={handleSampleDataUpdate}
                     onPickupComplete={fetchSamples}
                   />
                 ))}
@@ -223,10 +237,11 @@ export default function Dashboard() {
               {samples
                 .filter(sample => sample.status === 'Picked up. Ready for Analysis')
                 .map(sample => (
-                  <SampleCard 
+                  <EditableSampleCard 
                     key={sample.chip_id} 
                     sample={sample} 
                     onUpdateStatus={handleUpdateSample}
+                    onUpdateSample={handleSampleDataUpdate}
                     onPickupComplete={fetchSamples}
                   />
                 ))}
