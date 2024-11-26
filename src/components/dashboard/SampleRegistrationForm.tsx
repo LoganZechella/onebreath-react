@@ -11,6 +11,7 @@ interface SampleRegistrationFormProps {
     patient_id: string;
     sample_type: string;
     timestamp: string;
+    notes?: string;
   }) => Promise<void>;
   initialChipId?: string;
 }
@@ -25,6 +26,7 @@ export default function SampleRegistrationForm({
   const [patientId, setPatientId] = useState('BDx-');
   const [sampleType, setSampleType] = useState('');
   const [loading, setLoading] = useState(false);
+  const [notes, setNotes] = useState('');
 
   // Update chipId when initialChipId changes or modal opens
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function SampleRegistrationForm({
       setChipId('');
       setPatientId('BDx-');
       setSampleType('');
+      setNotes('');
       setLoading(false);
     }
   }, [isOpen]);
@@ -66,7 +69,8 @@ export default function SampleRegistrationForm({
         chip_id: chipId,
         patient_id: patientId,
         sample_type: sampleType,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        notes: notes.trim() || undefined
       });
       
       toast.success('Sample registered successfully!', {
@@ -79,6 +83,7 @@ export default function SampleRegistrationForm({
       setChipId('');
       setPatientId('BDx-');
       setSampleType('');
+      setNotes('');
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to register sample', {
@@ -191,6 +196,34 @@ export default function SampleRegistrationForm({
                 <option value="LC Positive">LC Positive</option>
                 <option value="LC Negative">LC Negative</option>
               </select>
+            </div>
+
+            {/* Notes Field */}
+            <div className="space-y-2">
+              <label htmlFor="notes" 
+                     className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Notes (Optional)
+              </label>
+              <div className="relative">
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 500) {
+                      setNotes(e.target.value);
+                    }
+                  }}
+                  maxLength={500}
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary 
+                           focus:ring-2 focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600
+                           dark:text-white transition-colors duration-200 resize-none"
+                  placeholder="Add any additional notes or comments about this sample..."
+                />
+                <span className="absolute right-3 bottom-3 text-sm text-gray-500 dark:text-gray-400">
+                  {notes.length}/500
+                </span>
+              </div>
             </div>
 
             {/* Action Buttons */}

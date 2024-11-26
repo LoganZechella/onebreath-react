@@ -12,6 +12,7 @@ export interface Sample {
   average_co2?: string | number;
   error?: string;
   document_urls?: string[];
+  notes?: string;
 }
 
 export interface AnalyzedSample {
