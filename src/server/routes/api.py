@@ -332,7 +332,7 @@ def ai_analysis():
         voc_per_liter_fields = [f"{voc}_per_liter" for voc in voc_fields]
         additional_fields = ['average_co2', 'final_volume']
         
-        # Fetch samples
+        # Fetch and convert samples
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         if not analyzed_samples:
             return jsonify({
@@ -340,8 +340,13 @@ def ai_analysis():
                 "error": "No analyzed samples available"
             }), 404
             
-        processed_samples = [convert_decimal128(sample) for sample in analyzed_samples]
-        data_hash = generate_data_hash(processed_samples)
+        # Convert samples and ensure all numeric fields are floats
+        processed_samples = []
+        for sample in analyzed_samples:
+            converted = convert_sample(sample)
+            processed_samples.append(converted)
+
+        data_hash = generate_data_hash(str(processed_samples))  # Convert to string before hashing
         
         # Check cache
         cached_analysis = get_cached_analysis(data_hash)
