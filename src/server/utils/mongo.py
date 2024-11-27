@@ -17,8 +17,8 @@ def create_mongo_client(uri):
         connectTimeoutMS=20000,
         socketTimeoutMS=20000,
         retryWrites=True,
-        readPreference=ReadPreference.PRIMARY_PREFERRED,
-        w='majority',  # Ensure write consistency
+        read_preference=ReadPreference.PRIMARY,
+        w='majority',
         journal=True
     )
 
