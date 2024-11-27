@@ -26,25 +26,14 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (cardRef.current) {
-      cardRef.current.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) {
-          setIsExpanded(false);
-        }
-      });
-    }
-  }, []);
-
-  useEffect(() => {
     console.log('Expansion state changed:', isExpanded);
   }, [isExpanded]);
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     console.log('Card clicked');
-    if (!isExpanded) {
-      console.log('Expanding card');
-      setIsExpanded(true);
-    }
+    setIsExpanded(true);
+    console.log('Setting expanded to true');
   };
 
   const handleChipIdEdit = () => {
