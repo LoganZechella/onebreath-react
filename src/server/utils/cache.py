@@ -6,13 +6,17 @@ import json
 class CacheManager:
     def __init__(self):
         self.sample_cache = {}
-        self.cache_ttl = timedelta(minutes=5)
+        self.cache_ttl = timedelta(minutes=1)
         
     def cache_key(self, prefix, *args, **kwargs):
         """Generate a unique cache key"""
         key_parts = [prefix, *args]
         key_parts.extend(f"{k}:{v}" for k, v in sorted(kwargs.items()))
         return hashlib.md5(json.dumps(key_parts).encode()).hexdigest()
+    
+    def invalidate_cache(self):
+        """Clear all cached data"""
+        self.sample_cache.clear()
     
     def cached_samples(self, status=None):
         def decorator(func):

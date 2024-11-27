@@ -114,6 +114,9 @@ def update_sample():
         )
 
         if result.modified_count > 0:
+            # Invalidate cache after successful update
+            cache_manager.invalidate_cache()
+            
             # Send notification for status changes
             if update_data.get('status') and update_data.get('status') != current_sample.get('status'):
                 subject = f"Sample Status Updated: {chip_id}"
@@ -473,7 +476,6 @@ def update_sample_pickup(chip_id):
             "final_volume": data['final_volume']
         }
 
-        # Add error field if present
         if 'error' in data:
             update_data['error'] = data['error']
 
@@ -483,6 +485,9 @@ def update_sample_pickup(chip_id):
         )
 
         if update_result.modified_count == 1:
+            # Invalidate cache after successful update
+            cache_manager.invalidate_cache()
+            
             if data['status'] == "Picked up. Ready for Analysis":
                 subject = f"Sample Picked Up: {chip_id}"
                 body = (f"Sample with chip ID {chip_id} has been picked up.\n"
