@@ -6,6 +6,16 @@ interface AIInsightsModalProps {
   onClose: () => void;
 }
 
+interface Stat {
+  label: string;
+  value: string;
+}
+
+interface Compound {
+  name: string;
+  stats: Stat[];
+}
+
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,15 +49,11 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   const renderInsights = (text: string) => {
     console.log('Raw insights text:', text);
     
-    const normalizedText = text.replace(/\r\n/g, '\n');
-    const sections = normalizedText.split('\n\n').filter(Boolean);
-    
-    console.log('Parsed sections:', sections);
+    const sections = text.split('\n\n').filter(Boolean);
     
     return (
       <div className="space-y-8">
         {sections.map((section, index) => {
-          // Title section (first section)
           if (index === 0) {
             return (
               <h3 key={`title-${index}`} className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
@@ -56,52 +62,64 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
             );
           }
           
-          // Handle measurement sections
-          if (section.startsWith('VOC Measurements') || section.startsWith('Additional Measurements')) {
-            const lines = section.split('\n');
-            const title = lines[0];
-            const compoundSections = section
-              .slice(title.length)
-              .trim()
-              .split('\n\n')
-              .filter(Boolean);
+          const lines = section.split('\n');
+          const title = lines[0];
+          
+          if (!title) return null;
+          
+          const compounds: Compound[] = [];
+          let currentCompound: Compound | null = null;
+          
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
             
-            return (
-              <div key={`section-${index}`} className="measurement-section mb-8">
-                <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
-                  {title}
-                </h4>
-                <div className="grid gap-6">
-                  {compoundSections.map((compound, idx) => {
-                    const [name, ...stats] = compound.split('\n').filter(Boolean);
-                    
-                    return (
-                      <div key={`compound-${idx}`} className="measurement-card">
-                        <h5 className="compound-name">
-                          {name.replace(':', '')}
-                        </h5>
-                        <div className="stat-grid">
-                          {stats.map((stat, statIdx) => {
-                            const [label, value] = stat.split(': ');
-                            if (!value) return null;
-                            
-                            return (
-                              <div key={`stat-${statIdx}`} className="stat-item">
-                                <span className="stat-label">{label}</span>
-                                <span className="stat-value">{value}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
+            if (line.endsWith(':')) {
+              if (currentCompound) {
+                compounds.push(currentCompound);
+              }
+              currentCompound = {
+                name: line.slice(0, -1),
+                stats: []
+              };
+            } else if (currentCompound && line.includes(':')) {
+              const [label, value] = line.split(':').map(s => s.trim());
+              currentCompound.stats.push({ label, value });
+            }
           }
           
-          return null;
+          if (currentCompound) {
+            compounds.push(currentCompound);
+          }
+          
+          return (
+            <div key={`section-${index}`} className="measurement-section mb-8">
+              <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
+                {title}
+              </h4>
+              <div className="grid gap-6">
+                {compounds.map((compound, idx) => (
+                  <div key={`compound-${idx}`} className="measurement-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h5 className="compound-name text-lg font-medium mb-3">
+                      {compound.name}
+                    </h5>
+                    <div className="stat-grid grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      {compound.stats.map((stat, statIdx) => (
+                        <div key={`stat-${statIdx}`} className="stat-item">
+                          <span className="stat-label text-sm text-gray-500 dark:text-gray-400 block">
+                            {stat.label}
+                          </span>
+                          <span className="stat-value font-medium">
+                            {stat.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
         })}
       </div>
     );
