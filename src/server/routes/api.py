@@ -17,7 +17,7 @@ import hashlib
 from concurrent.futures import TimeoutError
 import logging
 from datetime import timezone
-from ..utils.cache import cache_manager
+from ..utils.cache import get_cached_analysis, cache_analysis, generate_data_hash
 from ..utils.mongo import get_db_client
 
 
@@ -69,7 +69,6 @@ def google_sign_in():
 
 @api.route('/samples', methods=['GET'])
 @require_auth
-@cache_manager.cached_samples()
 def get_samples():
     client = get_db_client()
     collection = client[Config.DATABASE_NAME][Config.COLLECTION_NAME]
@@ -114,9 +113,6 @@ def update_sample():
         )
 
         if result.modified_count > 0:
-            # Invalidate cache after successful update
-            cache_manager.invalidate_cache()
-            
             # Send notification for status changes
             if update_data.get('status') and update_data.get('status') != current_sample.get('status'):
                 subject = f"Sample Status Updated: {chip_id}"
@@ -330,9 +326,13 @@ def ai_analysis():
         
         # Use cached analysis if available
         cache_key = 'ai_analysis_latest'
-        cached_result = cache_manager.sample_cache.get(cache_key)
-        if cached_result and time.time() - cached_result[1] < 300:  # 5 minutes TTL
-            return jsonify(cached_result[0]), 200
+        cached_result = get_cached_analysis(cache_key)
+        if cached_result:
+            return jsonify({
+                "success": True,
+                "insights": cached_result,
+                "cached": True
+            }), 200
             
         # Increase timeout to 90 seconds
         TIMEOUT_SECONDS = 90
@@ -345,18 +345,15 @@ def ai_analysis():
                 "error": "No analyzed samples available"
             }), 404
         
-        # Preprocess the data
-        processed_samples = [convert_sample(sample) for sample in analyzed_samples]
-        
         # Generate hash of processed data
-        data_hash = generate_data_hash(processed_samples)
+        data_hash = generate_data_hash(analyzed_samples)
         
-        # Check cache
-        cached_result = get_cached_analysis(data_hash)
-        if cached_result:
+        # Check cache by data hash
+        cached_analysis = get_cached_analysis(data_hash)
+        if cached_analysis:
             return jsonify({
                 "success": True, 
-                "insights": cached_result, 
+                "insights": cached_analysis, 
                 "cached": True,
                 "sampleCount": len(analyzed_samples)
             }), 200
@@ -373,7 +370,7 @@ def ai_analysis():
             message_content = (
                 "Analyze this breath analysis dataset and provide insights on trends, "
                 "patterns, and potential areas of interest. Focus on key metrics and "
-                f"their relationships: {json.dumps(processed_samples)}"
+                f"their relationships: {json.dumps(analyzed_samples)}"
             )
             
             openai_client.beta.threads.messages.create(
@@ -415,7 +412,7 @@ def ai_analysis():
                 elif run_status.status == "expired":
                     raise Exception("Assistant run expired")
                 
-                time.sleep(1)  # Increased sleep time to reduce API calls
+                time.sleep(1)
                 
             except Exception as e:
                 logger.error(f"Error checking run status: {str(e)}")
@@ -437,17 +434,8 @@ def ai_analysis():
                 
             response_content = assistant_messages[0].content[0].text.value
 
-            # Cache the successful result
-            cache_manager.sample_cache.set(
-                cache_key, 
-                {
-                    "success": True,
-                    "insights": response_content,
-                    "cached": False,
-                    "sampleCount": len(analyzed_samples)
-                },
-                time.time()
-            )
+            # Cache the result using the helper function
+            cache_analysis(data_hash, response_content)
 
             return jsonify({
                 "success": True,
@@ -515,9 +503,6 @@ def update_sample_pickup(chip_id):
         )
 
         if update_result.modified_count == 1:
-            # Invalidate cache after successful update
-            cache_manager.invalidate_cache()
-            
             if data['status'] == "Picked up. Ready for Analysis":
                 subject = f"Sample Picked Up: {chip_id}"
                 body = (f"Sample with chip ID {chip_id} has been picked up.\n"

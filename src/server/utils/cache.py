@@ -36,4 +36,37 @@ class CacheManager:
             return wrapper
         return decorator
 
+# Simple in-memory cache
+_cache = {}
+
+def get_cached_analysis(key: str) -> str | None:
+    """
+    Get cached analysis result if it exists and is not expired
+    """
+    if key not in _cache:
+        return None
+        
+    cached_item = _cache[key]
+    if datetime.now() - cached_item['timestamp'] > timedelta(minutes=5):
+        # Cache expired
+        del _cache[key]
+        return None
+        
+    return cached_item['content']
+
+def cache_analysis(key: str, content: str) -> None:
+    """
+    Cache analysis result with timestamp
+    """
+    _cache[key] = {
+        'content': content,
+        'timestamp': datetime.now()
+    }
+
+def generate_data_hash(data: list) -> str:
+    """
+    Generate a hash of the data to use as cache key
+    """
+    return hash(json.dumps(data, sort_keys=True))
+
 cache_manager = CacheManager() 
