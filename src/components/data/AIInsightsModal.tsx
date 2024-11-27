@@ -36,17 +36,29 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     return sections.map((section, index) => {
       if (section.startsWith('1.')) {
         return (
-          <div key={index} className="mb-6">
+          <div key={index} className="mb-8 last:mb-0">
             {section.split('\n').map((line, lineIndex) => {
               if (line.match(/^\d\./)) {
+                const numberMatch = line.match(/^\d/);
+                const number = numberMatch ? numberMatch[0] : '1';
+                
                 return (
-                  <h3 key={lineIndex} className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                    {line}
-                  </h3>
+                  <div key={lineIndex} className="flex items-start gap-3 mb-4">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 
+                                   text-primary dark:text-primary-light flex items-center justify-center font-semibold">
+                      {number}
+                    </span>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pt-1">
+                      {line.replace(/^\d\./, '').trim()}
+                    </h3>
+                  </div>
                 );
               } else if (line.startsWith('   -')) {
                 return (
-                  <li key={lineIndex} className="ml-6 mb-2 text-gray-600 dark:text-gray-300">
+                  <li key={lineIndex} className="ml-12 mb-3 text-gray-600 dark:text-gray-300 list-none relative
+                                              before:content-[''] before:absolute before:w-1.5 before:h-1.5 
+                                              before:bg-primary/60 dark:before:bg-primary-light/60 before:rounded-full
+                                              before:-left-4 before:top-2">
                     {line.replace('   - ', '')}
                   </li>
                 );
@@ -57,7 +69,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         );
       } else {
         return (
-          <p key={index} className="text-gray-600 dark:text-gray-300 mb-4">
+          <p key={index} className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
             {section}
           </p>
         );
@@ -69,10 +81,13 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto pt-8 pb-8">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI Insights</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in">
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI Insights</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Analysis based on collected samples</p>
+            </div>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
@@ -85,7 +100,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
             </button>
           </div>
           
-          <div className="prose dark:prose-invert max-w-none">
+          <div className="prose dark:prose-invert max-w-none modal-content overflow-y-auto max-h-[60vh] pr-4">
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
