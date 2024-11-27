@@ -84,7 +84,11 @@ try:
     bucket = storage_client.bucket(Config.GCS_BUCKET)
     
     # Initialize OpenAI client
-    openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
+    openai_client = OpenAI(
+        api_key=Config.OPENAI_API_KEY,
+        timeout=30.0,  # Set client timeout
+        max_retries=3  # Set client retries
+    )
     
 except Exception as e:
     logger.error(f"Failed to initialize services: {str(e)}")

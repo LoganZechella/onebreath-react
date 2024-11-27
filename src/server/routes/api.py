@@ -324,138 +324,97 @@ def ai_analysis():
     try:
         from ..main import analyzed_collection, openai_client
         
-        # Use cached analysis if available
-        cache_key = 'ai_analysis_latest'
-        cached_result = get_cached_analysis(cache_key)
-        if cached_result:
-            return jsonify({
-                "success": True,
-                "insights": cached_result,
-                "cached": True
-            }), 200
-            
-        # Increase timeout to 90 seconds
-        TIMEOUT_SECONDS = 90
+        TIMEOUT_SECONDS = 30  # Reduced timeout
+        MAX_RETRIES = 3
+        POLLING_INTERVAL = 2  # Check every 2 seconds
         
-        # Fetch and validate samples
+        # Fetch and validate samples first
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         if not analyzed_samples:
             return jsonify({
                 "success": False,
                 "error": "No analyzed samples available"
             }), 404
-        
-        # Convert samples to JSON-serializable format
+            
         processed_samples = [convert_sample(sample) for sample in analyzed_samples]
-        
-        # Generate hash of processed data
         data_hash = generate_data_hash(processed_samples)
         
-        # Check cache by data hash
+        # Check cache
         cached_analysis = get_cached_analysis(data_hash)
         if cached_analysis:
             return jsonify({
-                "success": True, 
-                "insights": cached_analysis, 
+                "success": True,
+                "insights": cached_analysis,
                 "cached": True,
                 "sampleCount": len(analyzed_samples)
             }), 200
 
-        # Create thread with timeout handling
-        try:
-            thread = openai_client.beta.threads.create()
-        except Exception as e:
-            logger.error(f"Failed to create thread: {str(e)}")
-            raise
+        # Create thread
+        thread = openai_client.beta.threads.create()
+        
+        # Create message with summarized data
+        summary_data = {
+            "sample_count": len(processed_samples),
+            "metrics": processed_samples[:5]  # Send only first 5 samples as example
+        }
+        
+        message = openai_client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"Analyze this breath analysis dataset summary: {json.dumps(summary_data)}"
+        )
 
-        # Add message with timeout handling
-        try:
-            message_content = (
-                "Analyze this breath analysis dataset and provide insights on trends, "
-                "patterns, and potential areas of interest. Focus on key metrics and "
-                f"their relationships: {json.dumps(processed_samples)}"
-            )
-            
-            openai_client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="user",
-                content=message_content
-            )
-        except Exception as e:
-            logger.error(f"Failed to create message: {str(e)}")
-            raise
+        # Start the analysis run
+        run = openai_client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=Config.ASSISTANT_ID,
+            instructions="Provide a brief analysis focusing on key trends and patterns."
+        )
 
-        # Run the assistant with timeout handling
-        try:
-            run = openai_client.beta.threads.runs.create(
-                thread_id=thread.id,
-                assistant_id=Config.ASSISTANT_ID,
-                instructions="Analyze the breath analysis data and provide clear, concise insights."
-            )
-        except Exception as e:
-            logger.error(f"Failed to create run: {str(e)}")
-            raise
-
-        # Wait for completion with improved timeout handling
+        # Poll for completion with better retry logic
         start_time = time.time()
-        while True:
+        retry_count = 0
+        
+        while retry_count < MAX_RETRIES:
             if time.time() - start_time > TIMEOUT_SECONDS:
-                raise TimeoutError(f"Analysis timed out after {TIMEOUT_SECONDS} seconds")
+                raise TimeoutError("Analysis request timed out")
+                
+            run_status = openai_client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
             
-            try:
-                run_status = openai_client.beta.threads.runs.retrieve(
-                    thread_id=thread.id,
-                    run_id=run.id
+            if run_status.status == "completed":
+                messages = openai_client.beta.threads.messages.list(
+                    thread_id=thread.id
                 )
                 
-                if run_status.status == "completed":
-                    break
-                elif run_status.status == "failed":
-                    raise Exception(f"Assistant run failed: {run_status.last_error}")
-                elif run_status.status == "expired":
-                    raise Exception("Assistant run expired")
+                for msg in messages:
+                    if msg.role == "assistant":
+                        response = msg.content[0].text.value
+                        cache_analysis(data_hash, response)
+                        return jsonify({
+                            "success": True,
+                            "insights": response,
+                            "cached": False,
+                            "sampleCount": len(analyzed_samples)
+                        }), 200
+                        
+            elif run_status.status in ["failed", "expired"]:
+                retry_count += 1
+                if retry_count >= MAX_RETRIES:
+                    raise Exception(f"Assistant run failed after {MAX_RETRIES} retries")
+                continue
                 
-                time.sleep(1)
-                
-            except Exception as e:
-                logger.error(f"Error checking run status: {str(e)}")
-                raise
+            time.sleep(POLLING_INTERVAL)
 
-        # Get the assistant's response with timeout handling
-        try:
-            messages = openai_client.beta.threads.messages.list(
-                thread_id=thread.id
-            )
-            
-            assistant_messages = [
-                msg for msg in messages 
-                if msg.role == "assistant"
-            ]
-            
-            if not assistant_messages:
-                raise Exception("No response received from assistant")
-                
-            response_content = assistant_messages[0].content[0].text.value
-
-            # Cache the result using the helper function
-            cache_analysis(data_hash, response_content)
-
-            return jsonify({
-                "success": True,
-                "insights": response_content,
-                "cached": False,
-                "sampleCount": len(analyzed_samples)
-            }), 200
-
-        except Exception as e:
-            logger.error(f"Error retrieving assistant response: {str(e)}")
-            raise
+        raise Exception("Failed to get response after maximum retries")
 
     except TimeoutError as e:
         logger.error(f"AI Analysis Timeout: {str(e)}")
         return jsonify({
             "success": False,
-            "error": f"Analysis timed out after {TIMEOUT_SECONDS} seconds. Please try again."
+            "error": "Analysis timed out. Please try again."
         }), 504
     except Exception as e:
         logger.error(f"AI Analysis Error: {str(e)}")
