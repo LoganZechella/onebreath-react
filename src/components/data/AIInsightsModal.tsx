@@ -33,47 +33,66 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
 
   const renderInsights = (text: string) => {
     const sections = text.split('\n\n');
+    
     return sections.map((section, index) => {
-      if (section.startsWith('1.')) {
-        return (
-          <div key={index} className="mb-8 last:mb-0">
-            {section.split('\n').map((line, lineIndex) => {
-              if (line.match(/^\d\./)) {
-                const numberMatch = line.match(/^\d/);
-                const number = numberMatch ? numberMatch[0] : '1';
-                
-                return (
-                  <div key={lineIndex} className="flex items-start gap-3 mb-4">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 
-                                   text-primary dark:text-primary-light flex items-center justify-center font-semibold">
-                      {number}
-                    </span>
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pt-1">
-                      {line.replace(/^\d\./, '').trim()}
-                    </h3>
-                  </div>
-                );
-              } else if (line.startsWith('   -')) {
-                return (
-                  <li key={lineIndex} className="ml-12 mb-3 text-gray-600 dark:text-gray-300 list-none relative
-                                              before:content-[''] before:absolute before:w-1.5 before:h-1.5 
-                                              before:bg-primary/60 dark:before:bg-primary-light/60 before:rounded-full
-                                              before:-left-4 before:top-2">
-                    {line.replace('   - ', '')}
-                  </li>
-                );
-              }
-              return null;
-            })}
-          </div>
-        );
-      } else {
+      // Handle the introduction paragraph
+      if (index === 0) {
         return (
           <p key={index} className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
             {section}
           </p>
         );
       }
+
+      // Handle numbered sections
+      if (section.match(/^\d\./)) {
+        const [title, ...content] = section.split('\n');
+        const numberMatch = title.match(/^\d/);
+        const number = numberMatch ? numberMatch[0] : '1';
+        const titleText = title.replace(/^\d\.\s*\*\*|\*\*\s*$|:/g, '').trim();
+
+        return (
+          <div key={index} className="mb-8 last:mb-0">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 
+                             text-primary dark:text-primary-light flex items-center justify-center font-semibold">
+                {number}
+              </span>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pt-1">
+                {titleText}
+              </h3>
+            </div>
+            <div className="ml-11 space-y-3">
+              {content.map((line, lineIndex) => {
+                // Handle bullet points
+                if (line.trim().startsWith('-')) {
+                  return (
+                    <li key={lineIndex} className="text-gray-600 dark:text-gray-300 list-none relative
+                                                before:content-[''] before:absolute before:w-1.5 before:h-1.5 
+                                                before:bg-primary/60 dark:before:bg-primary-light/60 
+                                                before:rounded-full before:-left-4 before:top-2 pl-6">
+                      {line.replace(/^-\s*/, '').trim()}
+                    </li>
+                  );
+                }
+                // Handle regular text
+                return (
+                  <p key={lineIndex} className="text-gray-600 dark:text-gray-300">
+                    {line.trim()}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      // Handle any remaining paragraphs
+      return (
+        <p key={index} className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+          {section}
+        </p>
+      );
     });
   };
 
@@ -83,7 +102,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto pt-8 pb-8">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in">
         <div className="p-8">
-          <div className="flex justify-between items-center mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI Insights</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Analysis based on collected samples</p>
@@ -110,7 +129,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                 {error}
               </div>
             ) : insights ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {renderInsights(insights)}
               </div>
             ) : (
