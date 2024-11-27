@@ -38,7 +38,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
       // Handle the introduction paragraph
       if (index === 0) {
         return (
-          <p key={index} className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+          <p key={index} className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
             {section}
           </p>
         );
@@ -49,35 +49,40 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         const [title, ...content] = section.split('\n');
         const numberMatch = title.match(/^\d/);
         const number = numberMatch ? numberMatch[0] : '1';
-        const titleText = title.replace(/^\d\.\s*\*\*|\*\*\s*$|:/g, '').trim();
+        const titleText = title
+          .replace(/^\d\.\s*/, '')
+          .replace(/\*\*/g, '')
+          .replace(/:/g, '')
+          .trim();
 
         return (
-          <div key={index} className="mb-8 last:mb-0">
-            <div className="flex items-start gap-3 mb-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 
-                             text-primary dark:text-primary-light flex items-center justify-center font-semibold">
+          <div key={index} className="mb-10 last:mb-0">
+            <div className="flex items-start gap-4 mb-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 
+                             text-blue-600 dark:text-blue-300 flex items-center justify-center 
+                             font-semibold text-lg">
                 {number}
               </span>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pt-1">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white pt-0.5">
                 {titleText}
               </h3>
             </div>
-            <div className="ml-11 space-y-3">
+            <div className="ml-12 space-y-4">
               {content.map((line, lineIndex) => {
-                // Handle bullet points
-                if (line.trim().startsWith('-')) {
+                // Handle bullet points (both - and • markers)
+                if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
                   return (
                     <li key={lineIndex} className="text-gray-600 dark:text-gray-300 list-none relative
                                                 before:content-[''] before:absolute before:w-1.5 before:h-1.5 
-                                                before:bg-primary/60 dark:before:bg-primary-light/60 
+                                                before:bg-blue-400/60 dark:before:bg-blue-300/60 
                                                 before:rounded-full before:-left-4 before:top-2 pl-6">
-                      {line.replace(/^-\s*/, '').trim()}
+                      {line.replace(/^[-•]\s*/, '').trim()}
                     </li>
                   );
                 }
                 // Handle regular text
                 return (
-                  <p key={lineIndex} className="text-gray-600 dark:text-gray-300">
+                  <p key={lineIndex} className="text-gray-600 dark:text-gray-300 leading-relaxed">
                     {line.trim()}
                   </p>
                 );
