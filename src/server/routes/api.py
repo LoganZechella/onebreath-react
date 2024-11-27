@@ -7,7 +7,7 @@ import csv
 import base64
 from firebase_admin import auth
 from bson.decimal128 import Decimal128
-from src.server.utils.helpers import send_email, send_sms, convert_decimal128, backup_database
+from src.server.utils.helpers import send_email, send_sms, convert_decimal128, backup_database, calculate_statistics
 from src.server.config import Config
 import json
 import time
@@ -322,13 +322,17 @@ def ai_analysis():
         return '', 200
 
     try:
-        from ..main import analyzed_collection, openai_client
+        from ..main import analyzed_collection
         
-        TIMEOUT_SECONDS = 30  # Reduced timeout
-        MAX_RETRIES = 3
-        POLLING_INTERVAL = 2  # Check every 2 seconds
+        # Fields to analyze
+        voc_fields = [
+            '2-Butanone', 'Pentanal', '2-hydroxy-acetaldehyde',
+            '2-hydroxy-3-butanone', '4-HHE', '4-HNE', 'Decanal'
+        ]
+        voc_per_liter_fields = [f"{voc}_per_liter" for voc in voc_fields]
+        additional_fields = ['average_co2', 'final_volume']
         
-        # Fetch and validate samples first
+        # Fetch samples
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         if not analyzed_samples:
             return jsonify({
@@ -336,7 +340,7 @@ def ai_analysis():
                 "error": "No analyzed samples available"
             }), 404
             
-        processed_samples = [convert_sample(sample) for sample in analyzed_samples]
+        processed_samples = [convert_decimal128(sample) for sample in analyzed_samples]
         data_hash = generate_data_hash(processed_samples)
         
         # Check cache
@@ -349,73 +353,52 @@ def ai_analysis():
                 "sampleCount": len(analyzed_samples)
             }), 200
 
-        # Create thread
-        thread = openai_client.beta.threads.create()
+        # Calculate statistics
+        all_fields = voc_fields + voc_per_liter_fields + additional_fields
+        stats = calculate_statistics(processed_samples, all_fields)
         
-        # Create message with summarized data
-        summary_data = {
-            "sample_count": len(processed_samples),
-            "metrics": processed_samples[:5]  # Send only first 5 samples as example
-        }
+        # Generate summary
+        summary = "Statistical Analysis Summary:\n\n"
         
-        message = openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=f"Analyze this breath analysis dataset summary: {json.dumps(summary_data)}"
-        )
-
-        # Start the analysis run
-        run = openai_client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=Config.ASSISTANT_ID,
-            instructions="Provide a brief analysis focusing on key trends and patterns."
-        )
-
-        # Poll for completion with better retry logic
-        start_time = time.time()
-        retry_count = 0
+        # Add VOC statistics
+        summary += "VOC Measurements (nanomoles):\n"
+        for voc in voc_fields:
+            if stats[voc]:
+                summary += f"\n{voc}:\n"
+                summary += f"Mean: {stats[voc]['mean']:.2f}\n"
+                summary += f"Median: {stats[voc]['median']:.2f}\n"
+                summary += f"Range: {stats[voc]['range']['min']:.2f} - {stats[voc]['range']['max']:.2f}\n"
+                summary += f"Sample Count: {stats[voc]['sample_count']}\n"
         
-        while retry_count < MAX_RETRIES:
-            if time.time() - start_time > TIMEOUT_SECONDS:
-                raise TimeoutError("Analysis request timed out")
-                
-            run_status = openai_client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            
-            if run_status.status == "completed":
-                messages = openai_client.beta.threads.messages.list(
-                    thread_id=thread.id
-                )
-                
-                for msg in messages:
-                    if msg.role == "assistant":
-                        response = msg.content[0].text.value
-                        cache_analysis(data_hash, response)
-                        return jsonify({
-                            "success": True,
-                            "insights": response,
-                            "cached": False,
-                            "sampleCount": len(analyzed_samples)
-                        }), 200
-                        
-            elif run_status.status in ["failed", "expired"]:
-                retry_count += 1
-                if retry_count >= MAX_RETRIES:
-                    raise Exception(f"Assistant run failed after {MAX_RETRIES} retries")
-                continue
-                
-            time.sleep(POLLING_INTERVAL)
-
-        raise Exception("Failed to get response after maximum retries")
-
-    except TimeoutError as e:
-        logger.error(f"AI Analysis Timeout: {str(e)}")
+        # Add VOC per liter statistics
+        summary += "\nVOC Measurements (nanomoles/liter of breath):\n"
+        for voc in voc_per_liter_fields:
+            if stats[voc]:
+                summary += f"\n{voc.replace('_per_liter', '')}:\n"
+                summary += f"Mean: {stats[voc]['mean']:.2f}\n"
+                summary += f"Median: {stats[voc]['median']:.2f}\n"
+                summary += f"Range: {stats[voc]['range']['min']:.2f} - {stats[voc]['range']['max']:.2f}\n"
+                summary += f"Sample Count: {stats[voc]['sample_count']}\n"
+        
+        # Add additional measurements
+        summary += "\nAdditional Measurements:\n"
+        for field in additional_fields:
+            if stats[field]:
+                summary += f"\n{field}:\n"
+                summary += f"Mean: {stats[field]['mean']:.2f}\n"
+                summary += f"Median: {stats[field]['median']:.2f}\n"
+                summary += f"Range: {stats[field]['range']['min']:.2f} - {stats[field]['range']['max']:.2f}\n"
+                summary += f"Sample Count: {stats[field]['sample_count']}\n"
+        
+        # Cache and return results
+        cache_analysis(data_hash, summary)
         return jsonify({
-            "success": False,
-            "error": "Analysis timed out. Please try again."
-        }), 504
+            "success": True,
+            "insights": summary,
+            "cached": False,
+            "sampleCount": len(analyzed_samples)
+        }), 200
+
     except Exception as e:
         logger.error(f"AI Analysis Error: {str(e)}")
         return jsonify({
