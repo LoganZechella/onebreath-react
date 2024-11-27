@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sample } from '../../types';
 import EditableField from './EditableField';
@@ -25,15 +25,11 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
   });
   const cardRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    console.log('Expansion state changed:', isExpanded);
-  }, [isExpanded]);
-
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('Card clicked');
-    setIsExpanded(true);
-    console.log('Setting expanded to true');
+    if (!isEditing) {
+      setIsExpanded(!isExpanded);
+    }
   };
 
   const handleChipIdEdit = () => {
@@ -56,10 +52,14 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
 
   const handleCancel = () => {
     setIsEditing(false);
-    setFields(prev => ({
-      ...prev,
-      chipId: { ...prev.chipId, isEditing: false }
-    }));
+    setShowChipIdWarning(false);
+    setFields({
+      chipId: { value: sample.chip_id, isEditing: false, isValid: true },
+      patientId: { value: sample.patient_id || '', isEditing: false, isValid: true },
+      sampleType: { value: sample.sample_type || '', isEditing: false, isValid: true },
+      notes: { value: sample.notes || '', isEditing: false, isValid: true }
+    });
+    setIsExpanded(false);
   };
 
   const handleSave = async () => {
@@ -73,7 +73,9 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
         notes: fields.notes.value
       });
       setIsEditing(false);
-      onPickupComplete?.();
+      setShowChipIdWarning(false);
+      setIsExpanded(false);
+      toast.success('Sample updated successfully');
     } catch (error) {
       toast.error('Failed to save changes');
       console.error('Error saving changes:', error);
@@ -82,13 +84,10 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
     }
   };
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    try {
-      await onUpdateStatus(sample.chip_id, newStatus, sample.sample_type || '');
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
-    }
+  const handleEditButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded(true);
+    setIsEditing(true);
   };
 
   const formatStartTime = (timestamp: string) => {
@@ -115,7 +114,7 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
         value={fields.chipId.value}
         onChange={(value) => handleFieldEdit('chipId', value)}
         error={!fields.chipId.isValid ? 'Invalid Chip ID format (PXXXXX)' : undefined}
-        isEditing={fields.chipId.isEditing}
+        isEditing={isEditing}
         onStartEdit={handleChipIdEdit}
         warning={showChipIdWarning}
       />
@@ -125,15 +124,14 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
           animate={{ opacity: 1 }}
           className="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded"
         >
-          Warning: Changing the Chip ID of a registered sample should only be done if absolutely necessary. 
-          Click again to edit.
+          Warning: Changing the Chip ID of a registered sample should only be done if absolutely necessary.
         </motion.div>
       )}
       <EditableField
         label="Patient ID"
         value={fields.patientId.value}
         onChange={(value) => handleFieldEdit('patientId', value)}
-        error={!fields.patientId.isValid ? 'Invalid Patient ID format (BDx-XXX)' : undefined}
+        error={!fields.patientId.isValid ? 'Invalid Patient ID format' : undefined}
         isEditing={isEditing}
       />
       <EditableField
@@ -190,7 +188,6 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
           className="p-4 relative z-10"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Original card content */}
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -215,24 +212,27 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
             <div className="flex space-x-2">
               {sample.status === 'In Process' && (
                 <button
-                  onClick={() => handleStatusUpdate('Ready for Pickup')}
-                  className="px-3 py-1 text-sm bg-accent-light text-accent-dark rounded-full hover:bg-accent-dark hover:text-white transition-colors"
+                  onClick={handleEditButtonClick}
+                  className="px-3 py-1 text-sm bg-accent-light text-accent-dark rounded-full 
+                           hover:bg-accent-dark hover:text-white transition-colors"
                 >
-                  &#10004;
+                  {isEditing ? '✎' : '✎'}
                 </button>
               )}
               {sample.status === 'Ready for Pickup' && (
                 <button
-                  onClick={() => handleStatusUpdate('Picked up. Ready for Analysis')}
-                  className="px-3 py-1 text-sm bg-accent-dark text-white rounded-full hover:bg-accent-light hover:text-accent-dark transition-colors font-bold"
+                  onClick={() => onUpdateStatus(sample.chip_id, 'Picked up. Ready for Analysis', sample.sample_type || '')}
+                  className="px-3 py-1 text-sm bg-accent-dark text-white rounded-full 
+                           hover:bg-accent-light hover:text-accent-dark transition-colors font-bold"
                 >
                   Pickup
                 </button>
               )}
               {sample.status === 'Picked up. Ready for Analysis' && (
                 <button
-                  onClick={() => handleStatusUpdate('Complete')}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors font-bold"
+                  onClick={() => onUpdateStatus(sample.chip_id, 'Complete', sample.sample_type || '')}
+                  className="px-3 py-1 text-sm bg-green-600 text-white rounded-full 
+                           hover:bg-green-700 transition-colors font-bold"
                 >
                   Complete
                 </button>
@@ -251,78 +251,58 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
               {renderEditableFields()}
               
               {/* Action buttons */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-6 flex justify-end space-x-3"
-              >
-                {isEditing ? (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCancel();
-                      }}
-                      className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800
-                               dark:text-gray-300 dark:hover:text-gray-100 rounded-lg
-                               hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSave();
-                      }}
-                      disabled={isSaving}
-                      className="px-4 py-2 text-sm font-medium text-white bg-primary
-                               hover:bg-primary-dark rounded-lg transition-colors
-                               disabled:opacity-50 disabled:cursor-not-allowed
-                               flex items-center space-x-2"
-                    >
-                      {isSaving ? (
-                        <>
-                          <motion.svg
-                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </motion.svg>
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        'Save Changes'
-                      )}
-                    </button>
-                  </>
-                ) : (
+              {isEditing && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-6 flex justify-end space-x-3"
+                >
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditing(true);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-primary hover:text-primary-dark
-                             dark:text-primary-light dark:hover:text-primary transition-colors
-                             rounded-lg hover:bg-primary/10"
+                    onClick={handleCancel}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800
+                             dark:text-gray-300 dark:hover:text-gray-100 rounded-lg
+                             hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   >
-                    Edit Sample
+                    Cancel
                   </button>
-                )}
-              </motion.div>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary
+                             hover:bg-primary-dark rounded-lg transition-colors
+                             disabled:opacity-50 disabled:cursor-not-allowed
+                             flex items-center space-x-2"
+                  >
+                    {isSaving ? (
+                      <>
+                        <motion.svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </motion.svg>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </motion.div>
