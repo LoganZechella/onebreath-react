@@ -17,6 +17,8 @@ import hashlib
 from concurrent.futures import TimeoutError
 import logging
 from datetime import timezone
+from ..utils.cache import cache_manager
+from ..utils.mongo import get_db_client
 
 
 logger = logging.getLogger(__name__)
@@ -67,23 +69,22 @@ def google_sign_in():
 
 @api.route('/samples', methods=['GET'])
 @require_auth
+@cache_manager.cached_samples()
 def get_samples():
-    from ..main import collection
+    client = get_db_client()
+    collection = client[Config.DATABASE_NAME][Config.COLLECTION_NAME]
+    
     statuses = ["In Process", "Ready for Pickup", 
                 "Picked up. Ready for Analysis", "Complete"]
-    query_result = collection.find(
-        {"status": {"$in": statuses}}, 
-        {"_id": 0}
-    )
-    samples = list(query_result)
-    samples = [convert_decimal128(sample) for sample in samples]
     
-    # Convert datetime objects to ISO format strings for JSON serialization
-    for sample in samples:
-        if 'timestamp' in sample and isinstance(sample['timestamp'], datetime):
-            sample['timestamp'] = sample['timestamp'].isoformat() + 'Z'
+    pipeline = [
+        {"$match": {"status": {"$in": statuses}}},
+        {"$project": {"_id": 0}},
+        {"$sort": {"timestamp": -1}}
+    ]
     
-    return jsonify(samples), 200
+    samples = list(collection.aggregate(pipeline))
+    return [convert_decimal128(sample) for sample in samples]
 
 @api.route('/update_sample', methods=['POST'])
 @require_auth
@@ -324,6 +325,12 @@ def ai_analysis():
     try:
         from ..main import analyzed_collection, openai_client
         
+        # Use cached analysis if available
+        cache_key = 'ai_analysis_latest'
+        cached_result = cache_manager.sample_cache.get(cache_key)
+        if cached_result and time.time() - cached_result[1] < 300:  # 5 minutes TTL
+            return jsonify(cached_result[0]), 200
+            
         # Reduce timeout to 25 seconds to stay within worker timeout
         TIMEOUT_SECONDS = 25
         
