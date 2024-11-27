@@ -265,7 +265,7 @@
 
 /* Updated Modal Animation */
 .insights-fade-in {
-  animation: insightsFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: insightsFadeIn 0.3s ease-out;
 }
 
 @keyframes insightsFadeIn {
@@ -277,4 +277,18 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Card hover effects */
+.measurement-card {
+  @apply transform transition-all duration-200 hover:-translate-y-1;
+}
+
+/* Stat value animations */
+.stat-value {
+  @apply transition-all duration-200;
+}
+
+.stat-value:hover {
+  @apply text-blue-600 dark:text-blue-400;
 }
