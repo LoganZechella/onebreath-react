@@ -17,6 +17,8 @@ import hashlib
 from concurrent.futures import TimeoutError
 import logging
 from datetime import timezone
+from ..utils.cache import cache_manager
+from ..utils.mongo import get_db_client
 
 
 logger = logging.getLogger(__name__)
@@ -67,23 +69,22 @@ def google_sign_in():
 
 @api.route('/samples', methods=['GET'])
 @require_auth
+@cache_manager.cached_samples()
 def get_samples():
-    from ..main import collection
+    client = get_db_client()
+    collection = client[Config.DATABASE_NAME][Config.COLLECTION_NAME]
+    
     statuses = ["In Process", "Ready for Pickup", 
                 "Picked up. Ready for Analysis", "Complete"]
-    query_result = collection.find(
-        {"status": {"$in": statuses}}, 
-        {"_id": 0}
-    )
-    samples = list(query_result)
-    samples = [convert_decimal128(sample) for sample in samples]
     
-    # Convert datetime objects to ISO format strings for JSON serialization
-    for sample in samples:
-        if 'timestamp' in sample and isinstance(sample['timestamp'], datetime):
-            sample['timestamp'] = sample['timestamp'].isoformat() + 'Z'
+    pipeline = [
+        {"$match": {"status": {"$in": statuses}}},
+        {"$project": {"_id": 0}},
+        {"$sort": {"timestamp": -1}}
+    ]
     
-    return jsonify(samples), 200
+    samples = list(collection.aggregate(pipeline))
+    return [convert_decimal128(sample) for sample in samples]
 
 @api.route('/update_sample', methods=['POST'])
 @require_auth
@@ -92,11 +93,7 @@ def update_sample():
     try:
         update_data = request.json
         chip_id = update_data.get('chip_id')
-        status = update_data.get('status')
-        sample_type = update_data.get('sample_type')
-        patient_id = update_data.get('patient_id')
-        timestamp = update_data.get('timestamp')
-
+        
         if not chip_id:
             return jsonify({"success": False, "error": "Chip ID is required"}), 400
 
@@ -105,13 +102,11 @@ def update_sample():
         if not current_sample:
             return jsonify({"success": False, "error": "Sample not found"}), 404
 
-        update_fields = {"status": status} if status else {}
-        if sample_type:
-            update_fields["sample_type"] = sample_type
-        if patient_id:
-            update_fields["patient_id"] = patient_id
-        if timestamp:
-            update_fields["timestamp"] = timestamp
+        # Build update fields
+        update_fields = {}
+        for field in ['status', 'sample_type', 'patient_id', 'timestamp', 'notes']:
+            if field in update_data:
+                update_fields[field] = update_data[field]
 
         result = collection.update_one(
             {"chip_id": chip_id},
@@ -119,16 +114,19 @@ def update_sample():
         )
 
         if result.modified_count > 0:
+            # Invalidate cache after successful update
+            cache_manager.invalidate_cache()
+            
             # Send notification for status changes
-            if status and status != current_sample.get('status'):
+            if update_data.get('status') and update_data.get('status') != current_sample.get('status'):
                 subject = f"Sample Status Updated: {chip_id}"
                 body = (f"Sample status has been updated:\n\n"
                        f"Chip ID: {chip_id}\n"
                        f"Previous Status: {current_sample.get('status', 'N/A')}\n"
-                       f"New Status: {status}\n"
-                       f"Sample Type: {sample_type or current_sample.get('sample_type', 'N/A')}\n"
-                       f"Patient ID: {patient_id or current_sample.get('patient_id', 'N/A')}\n"
-                       f"Update Time: {timestamp or datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                       f"New Status: {update_data.get('status')}\n"
+                       f"Sample Type: {update_data.get('sample_type', current_sample.get('sample_type', 'N/A'))}\n"
+                       f"Patient ID: {update_data.get('patient_id', current_sample.get('patient_id', 'N/A'))}\n"
+                       f"Update Time: {update_data.get('timestamp', datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC'))}")
                 send_email(subject, body)
             return jsonify({"success": True}), 200
         
@@ -330,6 +328,12 @@ def ai_analysis():
     try:
         from ..main import analyzed_collection, openai_client
         
+        # Use cached analysis if available
+        cache_key = 'ai_analysis_latest'
+        cached_result = cache_manager.sample_cache.get(cache_key)
+        if cached_result and time.time() - cached_result[1] < 300:  # 5 minutes TTL
+            return jsonify(cached_result[0]), 200
+            
         # Reduce timeout to 25 seconds to stay within worker timeout
         TIMEOUT_SECONDS = 25
         
@@ -472,7 +476,6 @@ def update_sample_pickup(chip_id):
             "final_volume": data['final_volume']
         }
 
-        # Add error field if present
         if 'error' in data:
             update_data['error'] = data['error']
 
@@ -482,6 +485,9 @@ def update_sample_pickup(chip_id):
         )
 
         if update_result.modified_count == 1:
+            # Invalidate cache after successful update
+            cache_manager.invalidate_cache()
+            
             if data['status'] == "Picked up. Ready for Analysis":
                 subject = f"Sample Picked Up: {chip_id}"
                 body = (f"Sample with chip ID {chip_id} has been picked up.\n"
@@ -534,11 +540,11 @@ def register_sample():
             "patient_id": data['patient_id'],
             "sample_type": data['sample_type'],
             "status": data['status'],
-            "timestamp": data['timestamp'],  # Store original timestamp as string
-            "expected_completion_time": expected_completion_time,  # Store calculated time as ISO string
-            # Add any existing fields from the request that might be present
+            "timestamp": data['timestamp'],
+            "expected_completion_time": expected_completion_time,
             "batch_number": data.get('batch_number'),
-            "mfg_date": data.get('mfg_date')
+            "mfg_date": data.get('mfg_date'),
+            "notes": data.get('notes')
         }
 
         # Remove None values to keep the document clean
@@ -547,7 +553,7 @@ def register_sample():
         result = collection.insert_one(new_sample)
         
         if result.inserted_id:
-            # Send notification email for new sample registration
+            # Update email notification to include notes if present
             subject = f"New Sample Registered: {data['chip_id']}"
             body = (f"A new sample has been registered:\n\n"
                    f"Chip ID: {data['chip_id']}\n"
@@ -555,8 +561,13 @@ def register_sample():
                    f"Sample Type: {data['sample_type']}\n"
                    f"Status: {data['status']}\n"
                    f"Registration Time: {timestamp_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-                   f"Expected Completion: {expected_completion_time}\n\n"
-                   f"The sample will be ready for pickup in 2 hours.")
+                   f"Expected Completion: {expected_completion_time}")
+            
+            if data.get('notes'):
+                body += f"\n\nNotes: {data['notes']}"
+                
+            body += "\n\nThe sample will be ready for pickup in 2 hours."
+            
             send_email(subject, body)
             return jsonify({"success": True}), 201
             

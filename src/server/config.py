@@ -39,3 +39,28 @@ class Config:
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     ASSISTANT_ID = os.getenv('ASSISTANT_ID')
+
+class ProductionConfig(Config):
+    """Production-specific configuration"""
+    DEBUG = False
+    TESTING = False
+    
+    # MongoDB optimizations
+    MONGO_MAX_POOL_SIZE = 50
+    MONGO_MIN_POOL_SIZE = 10
+    
+    # Cache settings
+    CACHE_TYPE = 'redis'
+    CACHE_REDIS_URL = os.getenv('REDIS_URL')
+    CACHE_DEFAULT_TIMEOUT = 300
+    
+    # Rate limiting
+    RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL')
+    RATELIMIT_STRATEGY = 'fixed-window-elastic-expiry'
+    
+    # Socket.IO
+    SOCKETIO_MESSAGE_QUEUE = os.getenv('REDIS_URL')
+    
+    # OpenAI optimization
+    OPENAI_REQUEST_TIMEOUT = 25
+    OPENAI_MAX_RETRIES = 3
