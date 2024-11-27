@@ -11,15 +11,19 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   const [error, setError] = useState<string | null>(null);
   const [insights, setInsights] = useState<string>('');
 
-  const fetchInsights = async () => {
+  const fetchInsights = async (retryCount = 0) => {
     setLoading(true);
     setError(null);
     try {
       const data = await sampleService.getAIAnalysis();
       if (data.success) {
         setInsights(formatInsights(data.insights));
+      } else if (data.error?.includes('timed out') && retryCount < 2) {
+        // Retry up to 2 times for timeout errors
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return fetchInsights(retryCount + 1);
       } else {
-        setError(data.error);
+        setError(data.error || 'Failed to generate insights');
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');
@@ -27,6 +31,10 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerateClick = () => {
+    fetchInsights(0);
   };
 
   const formatInsights = (rawInsights: string): string => {
@@ -88,7 +96,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
           ) : (
             <div className="text-center py-8">
               <button
-                onClick={fetchInsights}
+                onClick={handleGenerateClick}
                 className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg
                          transition-colors shadow-lg hover:shadow-primary/20"
               >
