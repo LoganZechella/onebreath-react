@@ -84,7 +84,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
               };
             } else if (currentCompound && line.includes(':')) {
               const [label, value] = line.split(':').map(s => s.trim());
-              currentCompound.stats.push({ label, value });
+              if (label && value) {
+                currentCompound.stats.push({ label, value });
+              }
             }
           }
           
