@@ -35,6 +35,18 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
     }
   }, []);
 
+  useEffect(() => {
+    console.log('Expansion state changed:', isExpanded);
+  }, [isExpanded]);
+
+  const handleCardClick = () => {
+    console.log('Card clicked');
+    if (!isExpanded) {
+      console.log('Expanding card');
+      setIsExpanded(true);
+    }
+  };
+
   const handleChipIdEdit = () => {
     if (!showChipIdWarning) {
       setShowChipIdWarning(true);
@@ -167,8 +179,8 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
           zIndex: isExpanded ? 10 : 1
         }}
         className={`relative bg-white dark:bg-gray-700 rounded-lg shadow-md 
-                   ${isExpanded ? 'shadow-xl' : ''} overflow-hidden`}
-        onClick={() => !isExpanded && setIsExpanded(true)}
+                   ${isExpanded ? 'shadow-xl' : ''} overflow-hidden cursor-pointer`}
+        onClick={handleCardClick}
       >
         {isExpanded && (
           <motion.div
