@@ -83,13 +83,13 @@ def calculate_statistics(samples, fields):
                 
         if values:
             stats[field] = {
-                'mean': np.mean(values),
-                'median': np.median(values),
+                'mean': float(np.mean(values)),
+                'median': float(np.median(values)),
                 'range': {
-                    'min': min(values),
-                    'max': max(values)
+                    'min': float(min(values)),
+                    'max': float(max(values))
                 },
-                'sample_count': len(values)
+                'sample_count': int(len(values))
             }
         else:
             stats[field] = None
