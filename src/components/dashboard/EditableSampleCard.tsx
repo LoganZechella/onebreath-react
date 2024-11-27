@@ -163,29 +163,23 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
         initial={false}
         animate={{
           scale: isExpanded ? 1.02 : 1,
-          zIndex: isExpanded ? 10 : 1
+          zIndex: isExpanded ? 10 : 1,
         }}
-        className={`relative bg-white dark:bg-gray-700 rounded-lg shadow-md 
-                   ${isExpanded ? 'shadow-xl' : ''} overflow-hidden cursor-pointer`}
+        className={`relative rounded-lg shadow-md overflow-hidden
+          ${isExpanded 
+            ? 'bg-white dark:bg-gray-800 shadow-lg ring-2 ring-primary/20 dark:ring-primary/30' 
+            : 'bg-white dark:bg-gray-700'
+          }
+          ${isEditing 
+            ? 'ring-2 ring-blue-500 dark:ring-blue-400' 
+            : ''
+          }
+          transition-all duration-200 ease-in-out cursor-pointer`}
         onClick={handleCardClick}
       >
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isEditing) {
-                setIsExpanded(false);
-              }
-            }}
-          />
-        )}
-
         <motion.div 
-          className="p-4 relative z-10"
+          className={`p-4 relative z-10 transition-colors duration-200
+            ${isExpanded ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-start mb-4">
@@ -261,7 +255,7 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-4"
+              className={`mt-4 ${isEditing ? 'bg-white dark:bg-gray-800 p-4 rounded-lg' : ''}`}
             >
               {renderEditableFields()}
               
@@ -274,18 +268,26 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
                 >
                   <button
                     onClick={handleCancel}
-                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800
-                             dark:text-gray-300 dark:hover:text-gray-100 rounded-lg
-                             hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                    className="px-4 py-2 text-sm font-medium rounded-lg
+                             text-gray-700 dark:text-gray-300
+                             bg-gray-100 dark:bg-gray-700
+                             hover:bg-gray-200 dark:hover:bg-gray-600
+                             border border-gray-200 dark:border-gray-600
+                             transition-colors duration-200
+                             focus:outline-none focus:ring-2 focus:ring-offset-2 
+                             focus:ring-gray-500 dark:focus:ring-offset-gray-800"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary
-                             hover:bg-primary-dark rounded-lg transition-colors
+                    className="px-4 py-2 text-sm font-medium text-white 
+                             bg-primary hover:bg-primary-dark
+                             rounded-lg transition-colors duration-200
                              disabled:opacity-50 disabled:cursor-not-allowed
+                             focus:outline-none focus:ring-2 focus:ring-offset-2 
+                             focus:ring-primary dark:focus:ring-offset-gray-800
                              flex items-center space-x-2"
                   >
                     {isSaving ? (
