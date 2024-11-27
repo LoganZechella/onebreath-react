@@ -6,17 +6,26 @@ interface AIInsightsModalProps {
   onClose: () => void;
 }
 
+interface Stat {
+  label: string;
+  value: string;
+}
+
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insights, setInsights] = useState<string>('');
+
+  console.log('Current insights state:', insights);
 
   const fetchInsights = async (retryCount = 0) => {
     setLoading(true);
     setError(null);
     try {
       const data = await sampleService.getAIAnalysis();
-      if (data.success) {
+      console.log('API Response:', data);
+      if (data.success && data.insights) {
+        console.log('Setting insights:', data.insights);
         setInsights(data.insights);
       } else if (data.error?.includes('timed out') && retryCount < 2) {
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -25,6 +34,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         setError(data.error || 'Failed to generate insights');
       }
     } catch (error) {
+      console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -32,85 +42,91 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   };
 
   const renderInsights = (text: string) => {
-    const sections = text.split('\n\n');
+    console.log('Raw insights text:', text);
     
-    return sections.map((section, index) => {
-      // Handle the introduction paragraph
-      if (index === 0) {
-        return (
-          <p key={index} className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-            {section}
-          </p>
-        );
-      }
-
-      // Handle numbered sections
-      if (section.match(/^\d\./)) {
-        const [title, ...content] = section.split('\n');
-        const numberMatch = title.match(/^\d/);
-        const number = numberMatch ? numberMatch[0] : '1';
-        const titleText = title
-          .replace(/^\d\.\s*/, '')
-          .replace(/\*\*/g, '')
-          .replace(/:/g, '')
-          .trim();
-
-        return (
-          <div key={index} className="mb-10 last:mb-0">
-            <div className="flex items-start gap-4 mb-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 
-                             text-blue-600 dark:text-blue-300 flex items-center justify-center 
-                             font-semibold text-lg">
-                {number}
-              </span>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white pt-0.5">
-                {titleText}
+    const sections = text.split('\n\n').filter(Boolean);
+    
+    return (
+      <div className="space-y-8">
+        {sections.map((section, index) => {
+          if (index === 0) {
+            return (
+              <h3 key={`title-${index}`} className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                {section}
               </h3>
-            </div>
-            <div className="ml-12 space-y-4">
-              {content.map((line, lineIndex) => {
-                // Handle bullet points (both - and • markers)
-                if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-                  return (
-                    <li key={lineIndex} className="text-gray-600 dark:text-gray-300 list-none relative
-                                                before:content-[''] before:absolute before:w-1.5 before:h-1.5 
-                                                before:bg-blue-400/60 dark:before:bg-blue-300/60 
-                                                before:rounded-full before:-left-4 before:top-2 pl-6">
-                      {line.replace(/^[-•]\s*/, '').trim()}
-                    </li>
-                  );
-                }
-                // Handle regular text
-                return (
-                  <p key={lineIndex} className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {line.trim()}
-                  </p>
-                );
-              })}
-            </div>
-          </div>
-        );
-      }
+            );
+          }
+          
+          const lines = section.split('\n');
+          const title = lines[0];
+          
+          if (!title) return null;
+          
+          // Skip empty lines and process stats
+          const stats: Stat[] = [];
+          let currentCompound = '';
+          
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            if (line.endsWith(':')) {
+              currentCompound = line.slice(0, -1);
+            } else if (line.includes(':')) {
+              const [label, value] = line.split(':').map(s => s.trim());
+              if (label && value) {
+                stats.push({ label, value });
+              }
+            }
+          }
 
-      // Handle any remaining paragraphs
-      return (
-        <p key={index} className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-          {section}
-        </p>
-      );
-    });
+          if (stats.length === 0) return null;
+
+          return (
+            <div key={`section-${index}`} className="measurement-section mb-8">
+              <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
+                {title}
+              </h4>
+              <div className="measurement-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                {currentCompound && (
+                  <h5 className="compound-name text-lg font-medium mb-3">
+                    {currentCompound}
+                  </h5>
+                )}
+                <div className="stat-grid grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {stats.map((stat, statIdx) => (
+                    <div key={`stat-${statIdx}`} className="stat-item">
+                      <span className="stat-label text-sm text-gray-500 dark:text-gray-400 block">
+                        {stat.label}
+                      </span>
+                      <span className="stat-value font-medium">
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto pt-8 pb-8">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in">
+      <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in border border-gray-200 dark:border-gray-700">
         <div className="p-8">
-          <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex justify-between items-center mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI Insights</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Analysis based on collected samples</p>
+              <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
+                AI Insights
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Analysis based on collected samples
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -134,7 +150,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                 {error}
               </div>
             ) : insights ? (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {renderInsights(insights)}
               </div>
             ) : (

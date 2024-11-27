@@ -6,6 +6,7 @@ import json
 import gzip
 from src.server.config import Config
 from flask import current_app
+import numpy as np
 
 def send_email(subject, body):
     with current_app.app_context():
@@ -64,3 +65,33 @@ def backup_database(collection, bucket):
     except Exception as e:
         print(f"Database backup failed: {str(e)}")
         return False 
+
+def calculate_statistics(samples, fields):
+    """Calculate mean, median, and range for specified fields"""
+    
+    stats = {}
+    for field in fields:
+        # Convert values to float and filter out negative values
+        values = []
+        for sample in samples:
+            try:
+                value = float(sample.get(field, 0))
+                if value >= 0:  # Exclude negative values
+                    values.append(value)
+            except (ValueError, TypeError):
+                continue
+                
+        if values:
+            stats[field] = {
+                'mean': float(np.mean(values)),
+                'median': float(np.median(values)),
+                'range': {
+                    'min': float(min(values)),
+                    'max': float(max(values))
+                },
+                'sample_count': int(len(values))
+            }
+        else:
+            stats[field] = None
+            
+    return stats 
