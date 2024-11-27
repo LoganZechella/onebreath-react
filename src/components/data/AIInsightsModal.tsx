@@ -46,38 +46,34 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
       
       // Section headers (VOC Measurements and Additional Measurements)
       if (section.startsWith('VOC Measurements') || section.startsWith('Additional Measurements')) {
-        const [title, ...measurements] = section.split('\n');
+        const [title, ...compounds] = section.split('\n\n');
+        
         return (
-          <div key={index} className="mb-8">
-            <h4 className="text-xl font-semibold text-blue-600 dark:text-blue-400 mb-4">
+          <div key={index} className="measurement-section mb-8">
+            <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
               {title}
             </h4>
-            <div className="grid gap-4">
-              {measurements.map((measurement, idx) => {
-                if (!measurement.trim()) return null;
+            <div className="grid gap-6">
+              {compounds.map((compound, idx) => {
+                if (!compound.trim()) return null;
                 
-                // Split the measurement into name and values
-                const [name, ...values] = measurement.split('\n');
-                if (!values.length) return null;
+                const [name, ...stats] = compound.split('\n');
+                if (!stats.length) return null;
                 
                 return (
-                  <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
-                    <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  <div key={idx} className="measurement-card">
+                    <h5 className="compound-name">
                       {name.replace(':', '')}
                     </h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {values.map((stat, statIdx) => {
+                    <div className="stat-grid">
+                      {stats.map((stat, statIdx) => {
                         const [label, value] = stat.split(': ');
                         if (!value) return null;
                         
                         return (
-                          <div key={statIdx} className="flex flex-col">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {label}
-                            </span>
-                            <span className="text-base font-medium text-gray-900 dark:text-white">
-                              {value}
-                            </span>
+                          <div key={statIdx} className="stat-item">
+                            <span className="stat-label">{label}</span>
+                            <span className="stat-value">{value}</span>
                           </div>
                         );
                       })}
