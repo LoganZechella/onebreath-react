@@ -203,27 +203,36 @@
 
 /* AI Insights Modal Styles */
 .prose {
-  @apply text-gray-800 dark:text-gray-200 space-y-6;
+  @apply text-gray-800 dark:text-gray-200 space-y-8;
 }
 
 .prose h3 {
-  @apply text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100 leading-relaxed;
+  @apply text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6;
 }
 
-.prose ul {
-  @apply space-y-3 list-none ml-4;
+.prose h4 {
+  @apply text-lg font-semibold text-primary dark:text-primary-light mb-4;
 }
 
-.prose li {
-  @apply text-gray-700 dark:text-gray-300 leading-relaxed relative pl-6;
+.prose .measurement-card {
+  @apply bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 transition-all
+         hover:bg-gray-100 dark:hover:bg-gray-800/70;
 }
 
-.prose strong {
-  @apply font-semibold text-primary dark:text-primary-light;
+.prose .stat-grid {
+  @apply grid grid-cols-2 md:grid-cols-4 gap-3;
 }
 
-.prose em {
-  @apply text-gray-600 dark:text-gray-400 italic;
+.prose .stat-item {
+  @apply text-sm flex flex-col space-y-1;
+}
+
+.prose .stat-label {
+  @apply text-gray-500 dark:text-gray-400 font-medium;
+}
+
+.prose .stat-value {
+  @apply text-gray-900 dark:text-gray-100 font-medium;
 }
 
 /* Modal Overlay Scroll Behavior */
@@ -240,29 +249,29 @@
   scrollbar-color: theme('colors.primary.DEFAULT') theme('colors.gray.200');
 }
 
-/* Modal Content Scrollbar */
+/* Modal Content Scrollbar - Updated */
 .modal-content::-webkit-scrollbar {
-  @apply w-2;
+  @apply w-1.5;
 }
 
 .modal-content::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-700 rounded-full;
+  @apply bg-gray-100 dark:bg-gray-800 rounded-full;
 }
 
 .modal-content::-webkit-scrollbar-thumb {
-  @apply bg-primary/30 dark:bg-primary-light/30 rounded-full
-         hover:bg-primary/50 dark:hover:bg-primary-light/50;
+  @apply bg-primary/40 dark:bg-primary-light/40 rounded-full
+         hover:bg-primary/60 dark:hover:bg-primary-light/60;
 }
 
-/* AI Insights Animation */
+/* Updated Modal Animation */
 .insights-fade-in {
-  animation: insightsFadeIn 0.3s ease-out;
+  animation: insightsFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes insightsFadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;

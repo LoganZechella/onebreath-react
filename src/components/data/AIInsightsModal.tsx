@@ -35,56 +35,52 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     const sections = text.split('\n\n');
     
     return sections.map((section, index) => {
-      // Handle the introduction paragraph
+      // Title section
       if (index === 0) {
         return (
-          <p key={index} className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+          <h3 key={index} className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6">
             {section}
-          </p>
+          </h3>
         );
       }
-
-      // Handle numbered sections
-      if (section.match(/^\d\./)) {
-        const [title, ...content] = section.split('\n');
-        const numberMatch = title.match(/^\d/);
-        const number = numberMatch ? numberMatch[0] : '1';
-        const titleText = title
-          .replace(/^\d\.\s*/, '')
-          .replace(/\*\*/g, '')
-          .replace(/:/g, '')
-          .trim();
-
+      
+      // VOC Measurements sections
+      if (section.startsWith('VOC Measurements')) {
+        const [title, ...measurements] = section.split('\n');
         return (
-          <div key={index} className="mb-10 last:mb-0">
-            <div className="flex items-start gap-4 mb-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 
-                             text-blue-600 dark:text-blue-300 flex items-center justify-center 
-                             font-semibold text-lg">
-                {number}
-              </span>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white pt-0.5">
-                {titleText}
-              </h3>
-            </div>
-            <div className="ml-12 space-y-4">
-              {content.map((line, lineIndex) => {
-                // Handle bullet points (both - and • markers)
-                if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-                  return (
-                    <li key={lineIndex} className="text-gray-600 dark:text-gray-300 list-none relative
-                                                before:content-[''] before:absolute before:w-1.5 before:h-1.5 
-                                                before:bg-blue-400/60 dark:before:bg-blue-300/60 
-                                                before:rounded-full before:-left-4 before:top-2 pl-6">
-                      {line.replace(/^[-•]\s*/, '').trim()}
-                    </li>
-                  );
-                }
-                // Handle regular text
+          <div key={index} className="mb-8">
+            <h4 className="text-lg font-semibold text-primary dark:text-primary-light mb-4">
+              {title}
+            </h4>
+            <div className="grid gap-4">
+              {measurements.map((measurement, idx) => {
+                if (!measurement.trim()) return null;
+                const [name, stats] = measurement.split(':');
+                if (!stats) return null;
+                
                 return (
-                  <p key={lineIndex} className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {line.trim()}
-                  </p>
+                  <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      {name.trim()}
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {stats.split(' ').map((stat, statIdx) => {
+                        if (stat.includes('Mean:') || stat.includes('Median:') || 
+                            stat.includes('Range:') || stat.includes('Sample')) {
+                          const [label, value] = stat.split(':');
+                          return (
+                            <div key={statIdx} className="text-sm">
+                              <span className="text-gray-500 dark:text-gray-400">{label}:</span>
+                              <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                                {value}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -92,12 +88,51 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         );
       }
 
-      // Handle any remaining paragraphs
-      return (
-        <p key={index} className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-          {section}
-        </p>
-      );
+      // Additional Measurements section
+      if (section.startsWith('Additional Measurements')) {
+        const [title, ...measurements] = section.split('\n');
+        return (
+          <div key={index} className="mb-8">
+            <h4 className="text-lg font-semibold text-primary dark:text-primary-light mb-4">
+              {title}
+            </h4>
+            <div className="grid gap-4">
+              {measurements.map((measurement, idx) => {
+                if (!measurement.trim()) return null;
+                const [name, stats] = measurement.split(':');
+                if (!stats) return null;
+                
+                return (
+                  <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      {name.trim()}
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {stats.split(' ').map((stat, statIdx) => {
+                        if (stat.includes('Mean:') || stat.includes('Median:') || 
+                            stat.includes('Range:') || stat.includes('Sample')) {
+                          const [label, value] = stat.split(':');
+                          return (
+                            <div key={statIdx} className="text-sm">
+                              <span className="text-gray-500 dark:text-gray-400">{label}:</span>
+                              <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                                {value}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      return null;
     });
   };
 
