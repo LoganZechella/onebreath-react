@@ -345,8 +345,11 @@ def ai_analysis():
                 "error": "No analyzed samples available"
             }), 404
         
+        # Convert samples to JSON-serializable format
+        processed_samples = [convert_sample(sample) for sample in analyzed_samples]
+        
         # Generate hash of processed data
-        data_hash = generate_data_hash(analyzed_samples)
+        data_hash = generate_data_hash(processed_samples)
         
         # Check cache by data hash
         cached_analysis = get_cached_analysis(data_hash)
@@ -370,7 +373,7 @@ def ai_analysis():
             message_content = (
                 "Analyze this breath analysis dataset and provide insights on trends, "
                 "patterns, and potential areas of interest. Focus on key metrics and "
-                f"their relationships: {json.dumps(analyzed_samples)}"
+                f"their relationships: {json.dumps(processed_samples)}"
             )
             
             openai_client.beta.threads.messages.create(
