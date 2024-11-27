@@ -37,62 +37,74 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   };
 
   const renderInsights = (text: string) => {
-    const sections = text.split('\n\n');
+    console.log('Raw insights text:', text);
     
-    return sections.map((section, index) => {
-      // Title section
-      if (index === 0) {
-        return (
-          <h3 key={index} className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            {section}
-          </h3>
-        );
-      }
-      
-      // Section headers (VOC Measurements and Additional Measurements)
-      if (section.startsWith('VOC Measurements') || section.startsWith('Additional Measurements')) {
-        const [title, ...compounds] = section.split('\n\n');
-        
-        return (
-          <div key={index} className="measurement-section mb-8">
-            <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
-              {title}
-            </h4>
-            <div className="grid gap-6">
-              {compounds.map((compound, idx) => {
-                if (!compound.trim()) return null;
-                
-                const [name, ...stats] = compound.split('\n');
-                if (!stats.length) return null;
-                
-                return (
-                  <div key={idx} className="measurement-card">
-                    <h5 className="compound-name">
-                      {name.replace(':', '')}
-                    </h5>
-                    <div className="stat-grid">
-                      {stats.map((stat, statIdx) => {
-                        const [label, value] = stat.split(': ');
-                        if (!value) return null;
-                        
-                        return (
-                          <div key={statIdx} className="stat-item">
-                            <span className="stat-label">{label}</span>
-                            <span className="stat-value">{value}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      }
-      
-      return null;
-    });
+    const normalizedText = text.replace(/\r\n/g, '\n');
+    const sections = normalizedText.split('\n\n').filter(Boolean);
+    
+    console.log('Parsed sections:', sections);
+    
+    return (
+      <div className="space-y-8">
+        {sections.map((section, index) => {
+          // Title section (first section)
+          if (index === 0) {
+            return (
+              <h3 key={`title-${index}`} className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                {section}
+              </h3>
+            );
+          }
+          
+          // Handle measurement sections
+          if (section.startsWith('VOC Measurements') || section.startsWith('Additional Measurements')) {
+            const lines = section.split('\n');
+            const title = lines[0];
+            const compoundSections = section
+              .slice(title.length)
+              .trim()
+              .split('\n\n')
+              .filter(Boolean);
+            
+            return (
+              <div key={`section-${index}`} className="measurement-section mb-8">
+                <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
+                  {title}
+                </h4>
+                <div className="grid gap-6">
+                  {compoundSections.map((compound, idx) => {
+                    const [name, ...stats] = compound.split('\n').filter(Boolean);
+                    
+                    return (
+                      <div key={`compound-${idx}`} className="measurement-card">
+                        <h5 className="compound-name">
+                          {name.replace(':', '')}
+                        </h5>
+                        <div className="stat-grid">
+                          {stats.map((stat, statIdx) => {
+                            const [label, value] = stat.split(': ');
+                            if (!value) return null;
+                            
+                            return (
+                              <div key={`stat-${statIdx}`} className="stat-item">
+                                <span className="stat-label">{label}</span>
+                                <span className="stat-value">{value}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+          
+          return null;
+        })}
+      </div>
+    );
   };
 
   if (!isOpen) return null;
