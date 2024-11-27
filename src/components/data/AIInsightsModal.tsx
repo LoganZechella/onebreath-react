@@ -11,11 +11,6 @@ interface Stat {
   value: string;
 }
 
-interface Compound {
-  name: string;
-  stats: Stat[];
-}
-
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,58 +62,49 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
           
           if (!title) return null;
           
-          const compounds: Compound[] = [];
-          let currentCompound: Compound | null = null;
+          // Skip empty lines and process stats
+          const stats: Stat[] = [];
+          let currentCompound = '';
           
           for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
             
             if (line.endsWith(':')) {
-              if (currentCompound) {
-                compounds.push(currentCompound);
-              }
-              currentCompound = {
-                name: line.slice(0, -1),
-                stats: []
-              };
-            } else if (currentCompound && line.includes(':')) {
+              currentCompound = line.slice(0, -1);
+            } else if (line.includes(':')) {
               const [label, value] = line.split(':').map(s => s.trim());
               if (label && value) {
-                currentCompound.stats.push({ label, value });
+                stats.push({ label, value });
               }
             }
           }
-          
-          if (currentCompound) {
-            compounds.push(currentCompound);
-          }
-          
+
+          if (stats.length === 0) return null;
+
           return (
             <div key={`section-${index}`} className="measurement-section mb-8">
               <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
                 {title}
               </h4>
-              <div className="grid gap-6">
-                {compounds.map((compound, idx) => (
-                  <div key={`compound-${idx}`} className="measurement-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <h5 className="compound-name text-lg font-medium mb-3">
-                      {compound.name}
-                    </h5>
-                    <div className="stat-grid grid grid-cols-2 gap-4 sm:grid-cols-4">
-                      {compound.stats.map((stat, statIdx) => (
-                        <div key={`stat-${statIdx}`} className="stat-item">
-                          <span className="stat-label text-sm text-gray-500 dark:text-gray-400 block">
-                            {stat.label}
-                          </span>
-                          <span className="stat-value font-medium">
-                            {stat.value}
-                          </span>
-                        </div>
-                      ))}
+              <div className="measurement-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                {currentCompound && (
+                  <h5 className="compound-name text-lg font-medium mb-3">
+                    {currentCompound}
+                  </h5>
+                )}
+                <div className="stat-grid grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {stats.map((stat, statIdx) => (
+                    <div key={`stat-${statIdx}`} className="stat-item">
+                      <span className="stat-label text-sm text-gray-500 dark:text-gray-400 block">
+                        {stat.label}
+                      </span>
+                      <span className="stat-value font-medium">
+                        {stat.value}
+                      </span>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           );
