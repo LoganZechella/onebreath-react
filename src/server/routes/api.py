@@ -17,7 +17,7 @@ import hashlib
 from concurrent.futures import TimeoutError
 import logging
 from datetime import timezone
-from ..utils.cache import cache_manager
+from ..utils.cache import get_cached_analysis, cache_analysis, generate_data_hash
 from ..utils.mongo import get_db_client
 
 
@@ -69,7 +69,6 @@ def google_sign_in():
 
 @api.route('/samples', methods=['GET'])
 @require_auth
-@cache_manager.cached_samples()
 def get_samples():
     client = get_db_client()
     collection = client[Config.DATABASE_NAME][Config.COLLECTION_NAME]
@@ -114,9 +113,6 @@ def update_sample():
         )
 
         if result.modified_count > 0:
-            # Invalidate cache after successful update
-            cache_manager.invalidate_cache()
-            
             # Send notification for status changes
             if update_data.get('status') and update_data.get('status') != current_sample.get('status'):
                 subject = f"Sample Status Updated: {chip_id}"
@@ -328,113 +324,97 @@ def ai_analysis():
     try:
         from ..main import analyzed_collection, openai_client
         
-        # Use cached analysis if available
-        cache_key = 'ai_analysis_latest'
-        cached_result = cache_manager.sample_cache.get(cache_key)
-        if cached_result and time.time() - cached_result[1] < 300:  # 5 minutes TTL
-            return jsonify(cached_result[0]), 200
-            
-        # Reduce timeout to 25 seconds to stay within worker timeout
-        TIMEOUT_SECONDS = 25
+        TIMEOUT_SECONDS = 30  # Reduced timeout
+        MAX_RETRIES = 3
+        POLLING_INTERVAL = 2  # Check every 2 seconds
         
-        # Fetch and validate samples
+        # Fetch and validate samples first
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
         if not analyzed_samples:
             return jsonify({
                 "success": False,
                 "error": "No analyzed samples available"
             }), 404
-        
-        # Preprocess the data
+            
         processed_samples = [convert_sample(sample) for sample in analyzed_samples]
-        
-        # Generate hash of processed data
         data_hash = generate_data_hash(processed_samples)
         
         # Check cache
-        cached_result = get_cached_analysis(data_hash)
-        if cached_result:
+        cached_analysis = get_cached_analysis(data_hash)
+        if cached_analysis:
             return jsonify({
-                "success": True, 
-                "insights": cached_result, 
+                "success": True,
+                "insights": cached_analysis,
                 "cached": True,
                 "sampleCount": len(analyzed_samples)
             }), 200
 
-        # Create message content
-        message_content = (
-            "Analyze this breath analysis dataset and provide insights on trends, "
-            "patterns, and potential areas of interest. Focus on key metrics and "
-            f"their relationships: {json.dumps(processed_samples)}"
-        )
-
-        # Create a new thread
+        # Create thread
         thread = openai_client.beta.threads.create()
-
-        # Add a message to the thread
-        openai_client.beta.threads.messages.create(
+        
+        # Create message with summarized data
+        summary_data = {
+            "sample_count": len(processed_samples),
+            "metrics": processed_samples[:5]  # Send only first 5 samples as example
+        }
+        
+        message = openai_client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content=message_content
+            content=f"Analyze this breath analysis dataset summary: {json.dumps(summary_data)}"
         )
 
-        # Run the assistant
+        # Start the analysis run
         run = openai_client.beta.threads.runs.create(
             thread_id=thread.id,
             assistant_id=Config.ASSISTANT_ID,
-            instructions="Analyze the breath analysis data and provide clear, concise insights."
+            instructions="Provide a brief analysis focusing on key trends and patterns."
         )
 
-        # Wait for completion with timeout
+        # Poll for completion with better retry logic
         start_time = time.time()
-        while True:
+        retry_count = 0
+        
+        while retry_count < MAX_RETRIES:
             if time.time() - start_time > TIMEOUT_SECONDS:
-                raise TimeoutError(f"Analysis timed out after {TIMEOUT_SECONDS} seconds")
-            
+                raise TimeoutError("Analysis request timed out")
+                
             run_status = openai_client.beta.threads.runs.retrieve(
                 thread_id=thread.id,
                 run_id=run.id
             )
             
             if run_status.status == "completed":
-                break
-            elif run_status.status == "failed":
-                raise Exception(f"Assistant run failed: {run_status.last_error}")
-            
-            time.sleep(0.5)  # Reduced sleep time
+                messages = openai_client.beta.threads.messages.list(
+                    thread_id=thread.id
+                )
+                
+                for msg in messages:
+                    if msg.role == "assistant":
+                        response = msg.content[0].text.value
+                        cache_analysis(data_hash, response)
+                        return jsonify({
+                            "success": True,
+                            "insights": response,
+                            "cached": False,
+                            "sampleCount": len(analyzed_samples)
+                        }), 200
+                        
+            elif run_status.status in ["failed", "expired"]:
+                retry_count += 1
+                if retry_count >= MAX_RETRIES:
+                    raise Exception(f"Assistant run failed after {MAX_RETRIES} retries")
+                continue
+                
+            time.sleep(POLLING_INTERVAL)
 
-        # Get the assistant's response
-        messages = openai_client.beta.threads.messages.list(
-            thread_id=thread.id
-        )
-        
-        # Get the latest assistant message
-        assistant_messages = [
-            msg for msg in messages 
-            if msg.role == "assistant"
-        ]
-        
-        if not assistant_messages:
-            raise Exception("No response received from assistant")
-            
-        response_content = assistant_messages[0].content[0].text.value
-
-        # Cache the result
-        get_cached_analysis.cache_set(data_hash, response_content)
-
-        # Return response without manually adding CORS headers
-        return jsonify({
-            "success": True,
-            "insights": response_content,
-            "cached": False,
-            "sampleCount": len(analyzed_samples)
-        }), 200
+        raise Exception("Failed to get response after maximum retries")
 
     except TimeoutError as e:
         logger.error(f"AI Analysis Timeout: {str(e)}")
         return jsonify({
             "success": False,
-            "error": f"Analysis timed out after {TIMEOUT_SECONDS} seconds"
+            "error": "Analysis timed out. Please try again."
         }), 504
     except Exception as e:
         logger.error(f"AI Analysis Error: {str(e)}")
@@ -485,9 +465,6 @@ def update_sample_pickup(chip_id):
         )
 
         if update_result.modified_count == 1:
-            # Invalidate cache after successful update
-            cache_manager.invalidate_cache()
-            
             if data['status'] == "Picked up. Ready for Analysis":
                 subject = f"Sample Picked Up: {chip_id}"
                 body = (f"Sample with chip ID {chip_id} has been picked up.\n"
