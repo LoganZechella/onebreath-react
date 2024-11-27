@@ -117,12 +117,16 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto pt-8 pb-8">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in">
+      <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in border border-gray-200 dark:border-gray-700">
         <div className="p-8">
-          <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex justify-between items-center mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI Insights</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Analysis based on collected samples</p>
+              <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
+                AI Insights
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Analysis based on collected samples
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -146,7 +150,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                 {error}
               </div>
             ) : insights ? (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {renderInsights(insights)}
               </div>
             ) : (
