@@ -11,12 +11,16 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   const [error, setError] = useState<string | null>(null);
   const [insights, setInsights] = useState<string>('');
 
+  console.log('Current insights state:', insights);
+
   const fetchInsights = async (retryCount = 0) => {
     setLoading(true);
     setError(null);
     try {
       const data = await sampleService.getAIAnalysis();
-      if (data.success) {
+      console.log('API Response:', data);
+      if (data.success && data.insights) {
+        console.log('Setting insights:', data.insights);
         setInsights(data.insights);
       } else if (data.error?.includes('timed out') && retryCount < 2) {
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -25,6 +29,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         setError(data.error || 'Failed to generate insights');
       }
     } catch (error) {
+      console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoading(false);
