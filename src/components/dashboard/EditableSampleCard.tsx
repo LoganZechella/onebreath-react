@@ -177,7 +177,8 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-0"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (!isEditing) {
                 setIsExpanded(false);
               }
@@ -258,7 +259,10 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
                 {isEditing ? (
                   <>
                     <button
-                      onClick={handleCancel}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancel();
+                      }}
                       className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800
                                dark:text-gray-300 dark:hover:text-gray-100 rounded-lg
                                hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
@@ -266,7 +270,10 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
                       Cancel
                     </button>
                     <button
-                      onClick={handleSave}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSave();
+                      }}
                       disabled={isSaving}
                       className="px-4 py-2 text-sm font-medium text-white bg-primary
                                hover:bg-primary-dark rounded-lg transition-colors
@@ -304,7 +311,10 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
                   </>
                 ) : (
                   <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
                     className="px-4 py-2 text-sm font-medium text-primary hover:text-primary-dark
                              dark:text-primary-light dark:hover:text-primary transition-colors
                              rounded-lg hover:bg-primary/10"
