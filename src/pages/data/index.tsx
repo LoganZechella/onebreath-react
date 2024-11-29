@@ -106,11 +106,15 @@ export default function DataViewer() {
           sampleService.getStatisticsSummary()
         ]);
         
+        // Ensure samplesData is an array
         setSamples(Array.isArray(samplesData) ? samplesData : []);
-        setStatisticsSummary(statsData);
+        
+        // Ensure statsData is a string
+        setStatisticsSummary(typeof statsData === 'string' ? statsData : '');
       } catch (error) {
         console.error('Error fetching data:', error);
         setSamples([]);
+        setStatisticsSummary('');
       } finally {
         setLoading(false);
       }
@@ -156,18 +160,32 @@ export default function DataViewer() {
         : { labels: [], data: [] };
     }
 
+    // Add safe type checking for field values
+    const getFieldValue = (sample: AnalyzedSample, field: string): string | number => {
+      const value = sample[field as keyof AnalyzedSample];
+      if (value === null || value === undefined) return 'N/A';
+      
+      // Handle different field types
+      if (dateFields.includes(field)) {
+        try {
+          return new Date(value).toLocaleDateString();
+        } catch (e) {
+          console.error(`Error processing date for field ${field}:`, e);
+          return 'Invalid Date';
+        }
+      }
+      
+      return value;
+    };
+
     if (chartType === 'boxplot') {
-      // Process data for boxplot
       const processedData: BoxPlotData = { labels: [], data: [] };
       
       if (aggregationField === 'none') {
-        // Group by x-axis values for boxplot
         const groupedData: Record<string, number[]> = {};
         samples.forEach(sample => {
-          const xValue = formatFieldValue(sample[xField as keyof AnalyzedSample], xField);
-          const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
-            ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
-            : Number(sample[yField as keyof AnalyzedSample]);
+          const xValue = String(getFieldValue(sample, xField));
+          const yValue = Number(getFieldValue(sample, yField));
           
           if (!isNaN(yValue)) {
             if (!groupedData[xValue]) {
@@ -182,13 +200,10 @@ export default function DataViewer() {
           processedData.data.push(values);
         });
       } else {
-        // Group by aggregation field
         const aggregatedData: Record<string, number[]> = {};
         samples.forEach(sample => {
-          const key = String(sample[aggregationField as keyof AnalyzedSample]);
-          const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
-            ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
-            : Number(sample[yField as keyof AnalyzedSample]);
+          const key = String(getFieldValue(sample, aggregationField));
+          const yValue = Number(getFieldValue(sample, yField));
 
           if (!isNaN(yValue)) {
             if (!aggregatedData[key]) {
@@ -206,39 +221,30 @@ export default function DataViewer() {
       
       return processedData;
     } else {
-      // Process data for other chart types
       const processedData: ChartData = { labels: [], data: [] };
 
       if (aggregationField === 'none') {
         samples.forEach(sample => {
-          if (sample && typeof sample === 'object') {
-            const xValue = formatFieldValue(sample[xField as keyof AnalyzedSample], xField);
-            const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
-              ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
-              : Number(sample[yField as keyof AnalyzedSample]);
+          const xValue = String(getFieldValue(sample, xField));
+          const yValue = Number(getFieldValue(sample, yField));
 
-            if (!isNaN(yValue)) {
-              processedData.labels.push(xValue);
-              processedData.data.push(yValue);
-            }
+          if (!isNaN(yValue)) {
+            processedData.labels.push(xValue);
+            processedData.data.push(yValue);
           }
         });
       } else {
         const aggregatedData: Record<string, number[]> = {};
         
         samples.forEach(sample => {
-          if (sample && typeof sample === 'object') {
-            const key = String(sample[aggregationField as keyof AnalyzedSample]);
-            const yValue = typeof sample[yField as keyof AnalyzedSample] === 'string' 
-              ? parseFloat(String(sample[yField as keyof AnalyzedSample]))
-              : Number(sample[yField as keyof AnalyzedSample]);
+          const key = String(getFieldValue(sample, aggregationField));
+          const yValue = Number(getFieldValue(sample, yField));
 
-            if (!isNaN(yValue)) {
-              if (!aggregatedData[key]) {
-                aggregatedData[key] = [];
-              }
-              aggregatedData[key].push(yValue);
+          if (!isNaN(yValue)) {
+            if (!aggregatedData[key]) {
+              aggregatedData[key] = [];
             }
+            aggregatedData[key].push(yValue);
           }
         });
 
@@ -252,17 +258,9 @@ export default function DataViewer() {
     }
   };
 
-  const formatFieldValue = (value: any, field: string): string => {
-    if (value === undefined || value === null) return 'N/A';
-    
-    if (dateFields.includes(field)) {
-      return new Date(value).toLocaleDateString();
-    }
-    
-    return String(value);
-  };
-
+  // Add type checking for the average function
   const average = (arr: number[]): number => {
+    if (!Array.isArray(arr) || arr.length === 0) return 0;
     return arr.reduce((a, b) => a + b, 0) / arr.length;
   };
 
