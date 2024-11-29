@@ -85,9 +85,7 @@ try:
     
     # Initialize OpenAI client
     openai_client = OpenAI(
-        api_key=Config.OPENAI_API_KEY,
-        default_timeout=30.0,  # Updated timeout parameter name
-        max_retries=3
+        api_key=Config.OPENAI_API_KEY
     )
     
 except Exception as e:
