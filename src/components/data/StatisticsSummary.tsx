@@ -115,11 +115,18 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
   return (
     <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 mb-4">
       <div className="max-w-7xl mx-auto px-4">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 z-20">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            Data Overview
+          </h2>
+          <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+        </div>
+
         <div className="relative py-2">
           {showLeftScroll && (
             <button
               onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 
+              className="absolute left-20 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 
                        p-1.5 rounded-full shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700
                        transition-all duration-200 border border-gray-200 dark:border-gray-600"
             >
@@ -145,7 +152,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6"
+            className="overflow-x-auto hide-scrollbar flex gap-3 mx-28"
           >
             {renderStats()}
           </div>
