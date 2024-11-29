@@ -24,7 +24,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 300;
+      const scrollAmount = 200;
       scrollContainerRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
@@ -35,7 +35,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
   const renderStats = () => {
     if (!insights) {
       return (
-        <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+        <div className="text-center text-gray-500 dark:text-gray-400 py-2">
           No statistical data available
         </div>
       );
@@ -74,30 +74,32 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
       statsComponents.push(
         <div 
           key={`section-${index}`} 
-          className="min-w-[300px] bg-white dark:bg-gray-800 rounded-xl p-6 
-                   shadow-md border border-gray-200 dark:border-gray-700
-                   hover:shadow-lg transition-all duration-200"
+          className="min-w-[250px] bg-white dark:bg-gray-800 rounded-lg p-3 
+                   shadow-sm border border-gray-200 dark:border-gray-700
+                   hover:shadow-md transition-all duration-200"
         >
-          <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-4">
-            {title}
-          </h4>
-          {currentCompound && (
-            <h5 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {currentCompound}
-            </h5>
-          )}
-          <div className="grid grid-cols-1 gap-3">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-primary dark:text-primary-light">
+              {title}
+            </h4>
+            {currentCompound && (
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {currentCompound}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             {stats.map((stat, statIdx) => (
               <div 
                 key={`stat-${statIdx}`} 
-                className="flex flex-col bg-gray-50 dark:bg-gray-700/50 
-                         rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-700 
+                className="bg-gray-50 dark:bg-gray-700/50 
+                         rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700 
                          transition-colors duration-200"
               >
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-gray-500 dark:text-gray-400 block">
                   {stat.label}
                 </span>
-                <span className="text-lg font-medium text-gray-900 dark:text-white">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
                   {stat.value}
                 </span>
               </div>
@@ -111,44 +113,42 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
   };
 
   return (
-    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-        Statistical Summary
-      </h2>
-      
-      <div className="relative">
-        {showLeftScroll && (
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 
-                     p-2 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700
-                     transition-all duration-200 border border-gray-200 dark:border-gray-600"
-          >
-            <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
-        
-        {showRightScroll && (
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 
-                     p-2 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700
-                     transition-all duration-200 border border-gray-200 dark:border-gray-600"
-          >
-            <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
+    <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 mb-4">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="relative py-2">
+          {showLeftScroll && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 
+                       p-1.5 rounded-full shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700
+                       transition-all duration-200 border border-gray-200 dark:border-gray-600"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          
+          {showRightScroll && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 dark:bg-gray-800/90 
+                       p-1.5 rounded-full shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700
+                       transition-all duration-200 border border-gray-200 dark:border-gray-600"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
 
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          className="overflow-x-auto hide-scrollbar flex gap-4 pb-4"
-        >
-          {renderStats()}
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6"
+          >
+            {renderStats()}
+          </div>
         </div>
       </div>
     </div>
