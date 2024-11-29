@@ -33,7 +33,13 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
   };
 
   const renderStats = () => {
-    if (!insights) return null;
+    if (!insights) {
+      return (
+        <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+          No statistical data available
+        </div>
+      );
+    }
 
     const sections = insights.split('\n\n');
     const statsComponents: JSX.Element[] = [];
@@ -42,7 +48,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
       if (index === 0) return; // Skip the title section
 
       const lines = section.split('\n');
-      const title = lines[0];
+      const title = lines[0].trim();
       
       if (!title) return;
       
@@ -69,13 +75,14 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
         <div 
           key={`section-${index}`} 
           className="min-w-[300px] bg-white dark:bg-gray-800 rounded-xl p-6 
-                   shadow-md border border-gray-200 dark:border-gray-700"
+                   shadow-md border border-gray-200 dark:border-gray-700
+                   hover:shadow-lg transition-all duration-200"
         >
           <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-4">
             {title}
           </h4>
           {currentCompound && (
-            <h5 className="text-lg font-medium mb-3 text-gray-700 dark:text-gray-300">
+            <h5 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">
               {currentCompound}
             </h5>
           )}
