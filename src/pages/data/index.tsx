@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Chart from 'chart.js/auto';
 import * as d3 from 'd3';
 import AIInsightsModal from '../../components/data/AIInsightsModal';
+import StatisticsSummary from '../../components/data/StatisticsSummary';
 import { sampleService } from '../../services/api';
 import { AnalyzedSample } from '../../types';
 
@@ -28,6 +29,7 @@ export default function DataViewer() {
   const navigate = useNavigate();
   const [samples, setSamples] = useState<AnalyzedSample[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statisticsSummary, setStatisticsSummary] = useState<string>('');
   const [chartType, setChartType] = useState('bar');
   const [xAxis, setXAxis] = useState('timestamp');
   const [yAxis, setYAxis] = useState('average_co2');
@@ -96,20 +98,25 @@ export default function DataViewer() {
       return;
     }
 
-    const fetchAnalyzedSamples = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await sampleService.getAnalyzedSamples();
-        setSamples(Array.isArray(data) ? data : []);
+        const [samplesData, statsData] = await Promise.all([
+          sampleService.getAnalyzedSamples(),
+          sampleService.getStatisticsSummary()
+        ]);
+        
+        setSamples(Array.isArray(samplesData) ? samplesData : []);
+        setStatisticsSummary(statsData);
       } catch (error) {
-        console.error('Error fetching analyzed samples:', error);
+        console.error('Error fetching data:', error);
         setSamples([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAnalyzedSamples();
+    fetchData();
   }, [user, navigate]);
 
   // Create or update visualization when options change
@@ -488,6 +495,10 @@ export default function DataViewer() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen animate__animated animate__fadeIn">
+      {/* Statistics Summary Section */}
+      <StatisticsSummary insights={statisticsSummary} />
+
+      {/* Visualization Section */}
       <section className={`bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl 
                           border border-white/20 dark:border-gray-700/30 h-full
                           ${isFullscreen ? 'fixed inset-0 z-50 m-0 rounded-none' : ''}`}>
@@ -664,6 +675,7 @@ export default function DataViewer() {
         </div>
       </section>
 
+      {/* Empty AI Insights Modal (to be implemented later) */}
       <AIInsightsModal 
         isOpen={showInsights && !isFullscreen} 
         onClose={() => setShowInsights(false)} 

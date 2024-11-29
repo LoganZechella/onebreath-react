@@ -96,6 +96,11 @@ export const sampleService = {
     }
   },
 
+  getStatisticsSummary: async () => {
+    const response = await api.get('/statistics_summary');
+    return response.data;
+  },
+
   getAIAnalysis: async () => {
     const response = await api.get('/ai_analysis');
     return response.data;

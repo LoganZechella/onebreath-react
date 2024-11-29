@@ -315,9 +315,9 @@ def generate_data_hash(data):
     """Generate a hash of the analyzed samples data for cache comparison"""
     return hashlib.md5(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
-@api.route('/ai_analysis', methods=['GET', 'OPTIONS'])
+@api.route('/statistics_summary', methods=['GET', 'OPTIONS'])
 @require_auth
-def ai_analysis():
+def statistics_summary():
     if request.method == 'OPTIONS':
         return '', 200
 
@@ -589,6 +589,24 @@ def update_expired_samples():
         }), 200
     except Exception as e:
         logger.error(f"Error updating expired samples: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@api.route('/ai_analysis', methods=['GET', 'OPTIONS'])
+@require_auth
+def ai_analysis():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        return jsonify({
+            "success": False,
+            "message": "AI Analysis coming soon"
+        }), 200
+    except Exception as e:
+        logger.error(f"AI Analysis Error: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)
