@@ -109,8 +109,13 @@ export default function DataViewer() {
         // Ensure samplesData is an array
         setSamples(Array.isArray(samplesData) ? samplesData : []);
         
-        // Ensure statsData is a string
-        setStatisticsSummary(typeof statsData === 'string' ? statsData : '');
+        // Extract insights from statsData response
+        if (statsData?.success && statsData?.insights) {
+          setStatisticsSummary(statsData.insights);
+        } else {
+          console.warn('Invalid statistics data format:', statsData);
+          setStatisticsSummary('');
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         setSamples([]);
