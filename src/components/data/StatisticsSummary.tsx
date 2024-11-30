@@ -9,6 +9,19 @@ interface Stat {
   value: string;
 }
 
+interface VOCStat {
+  concentration: string;
+  perLiter: string;
+  range: string;
+  sampleCount: string;
+}
+
+interface StatSection {
+  title: string;
+  vocStats?: Record<string, VOCStat>;
+  generalStats?: Stat[];
+}
+
 export default function StatisticsSummary({ insights }: StatisticsSummaryProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
@@ -32,6 +45,69 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     }
   };
 
+  const parseInsights = (): StatSection[] => {
+    if (!insights) return [];
+
+    const sections = insights.split('\n\n');
+    const parsedSections: StatSection[] = [];
+    let currentSection: StatSection | null = null;
+
+    sections.forEach((section) => {
+      const lines = section.split('\n');
+      const title = lines[0].trim();
+
+      if (title === 'VOC Measurements:') {
+        currentSection = {
+          title: 'VOC Measurements',
+          vocStats: {}
+        };
+
+        let currentVOC = '';
+        lines.slice(1).forEach(line => {
+          const trimmedLine = line.trim();
+          if (trimmedLine.endsWith(':')) {
+            currentVOC = trimmedLine.slice(0, -1);
+            currentSection!.vocStats![currentVOC] = {} as VOCStat;
+          } else if (currentVOC && trimmedLine) {
+            if (trimmedLine.startsWith('Concentration')) {
+              currentSection!.vocStats![currentVOC].concentration = trimmedLine.split(': ')[1];
+            } else if (trimmedLine.startsWith('Per Liter')) {
+              currentSection!.vocStats![currentVOC].perLiter = trimmedLine.split(': ')[1];
+            } else if (trimmedLine.startsWith('Range')) {
+              currentSection!.vocStats![currentVOC].range = trimmedLine.split(': ')[1];
+            } else if (trimmedLine.startsWith('Sample Count')) {
+              currentSection!.vocStats![currentVOC].sampleCount = trimmedLine.split(': ')[1];
+            }
+          }
+        });
+
+        parsedSections.push(currentSection);
+      } else if (title === 'Additional Measurements:') {
+        currentSection = {
+          title: 'Additional Measurements',
+          generalStats: []
+        };
+
+        let currentStat = '';
+        lines.slice(1).forEach(line => {
+          const trimmedLine = line.trim();
+          if (trimmedLine.endsWith(':')) {
+            currentStat = trimmedLine.slice(0, -1);
+          } else if (currentStat && trimmedLine) {
+            const [label, value] = trimmedLine.split(': ');
+            if (label && value) {
+              currentSection!.generalStats!.push({ label: `${currentStat} - ${label}`, value });
+            }
+          }
+        });
+
+        parsedSections.push(currentSection);
+      }
+    });
+
+    return parsedSections;
+  };
+
   const renderStats = () => {
     if (!insights) {
       return (
@@ -41,60 +117,48 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
       );
     }
 
-    const sections = insights.split('\n\n');
-    const statsComponents: JSX.Element[] = [];
-
-    sections.forEach((section, index) => {
-      if (index === 0) return; // Skip the title section
-
-      const lines = section.split('\n');
-      const title = lines[0].trim();
-      
-      if (!title) return;
-      
-      const stats: Stat[] = [];
-      let currentCompound = '';
-      
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+    const sections = parseInsights();
+    return sections.map((section, sectionIndex) => (
+      <div 
+        key={`section-${sectionIndex}`} 
+        className="min-w-[300px] bg-white dark:bg-gray-800 rounded-lg p-4 
+                 shadow-sm border border-gray-200 dark:border-gray-700
+                 hover:shadow-md transition-all duration-200"
+      >
+        <h4 className="text-sm font-semibold text-primary dark:text-primary-light mb-3">
+          {section.title}
+        </h4>
         
-        if (line.endsWith(':')) {
-          currentCompound = line.slice(0, -1);
-        } else if (line.includes(':')) {
-          const [label, value] = line.split(':').map(s => s.trim());
-          if (label && value) {
-            stats.push({ label, value });
-          }
-        }
-      }
-
-      if (stats.length === 0) return;
-
-      statsComponents.push(
-        <div 
-          key={`section-${index}`} 
-          className="min-w-[250px] bg-white dark:bg-gray-800 rounded-lg p-3 
-                   shadow-sm border border-gray-200 dark:border-gray-700
-                   hover:shadow-md transition-all duration-200"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold text-primary dark:text-primary-light">
-              {title}
-            </h4>
-            {currentCompound && (
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {currentCompound}
-              </span>
-            )}
+        {section.vocStats && (
+          <div className="space-y-4">
+            {Object.entries(section.vocStats).map(([voc, stats], index) => (
+              <div key={`voc-${index}`} className="border-t border-gray-100 dark:border-gray-700 pt-3">
+                <div className="font-medium text-gray-900 dark:text-white mb-2">{voc}</div>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Concentration</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.concentration}</span>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Per Liter</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.perLiter}</span>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Range</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.range}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+
+        {section.generalStats && (
           <div className="grid grid-cols-2 gap-2">
-            {stats.map((stat, statIdx) => (
+            {section.generalStats.map((stat, statIdx) => (
               <div 
                 key={`stat-${statIdx}`} 
-                className="bg-gray-50 dark:bg-gray-700/50 
-                         rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700 
-                         transition-colors duration-200"
+                className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2"
               >
                 <span className="text-xs text-gray-500 dark:text-gray-400 block">
                   {stat.label}
@@ -105,11 +169,9 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
               </div>
             ))}
           </div>
-        </div>
-      );
-    });
-
-    return statsComponents;
+        )}
+      </div>
+    ));
   };
 
   return (
