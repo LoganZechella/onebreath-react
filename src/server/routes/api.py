@@ -624,6 +624,10 @@ def ai_analysis():
             processed_sample = {}
             for key, value in sample.items():
                 try:
+                    # First convert Decimal128 to float if needed
+                    if isinstance(value, Decimal128):
+                        value = float(value.to_decimal())
+                        
                     if isinstance(value, (int, float, str)):
                         num_value = float(value)
                         if key.endswith('_per_liter') and num_value < 0:
@@ -638,9 +642,10 @@ def ai_analysis():
                 processed_samples.append(processed_sample)
 
         # Generate cache key based on data
-        data_hash = generate_data_hash(processed_samples)
-        cached_result = get_cached_analysis(data_hash)
+        data_hash = generate_data_hash(str(processed_samples))  # Convert to string before hashing
         
+        # Check cache
+        cached_result = get_cached_analysis(data_hash)
         if cached_result:
             return jsonify({
                 "success": True,
