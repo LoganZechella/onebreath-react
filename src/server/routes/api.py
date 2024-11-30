@@ -616,33 +616,31 @@ def ai_analysis():
         # Convert samples and clean data
         processed_samples = []
         for sample in analyzed_samples:
-            # Skip samples with errors or missing values
+            # Skip samples with errors
             if sample.get('error'):
                 continue
                 
-            # Convert all numeric fields and filter negative values
-            processed_sample = {}
-            for key, value in sample.items():
+            # First convert the entire sample to handle Decimal128 and datetime
+            processed_sample = convert_sample(sample)
+            
+            # Then process numeric values and filter negatives
+            final_sample = {}
+            for key, value in processed_sample.items():
                 try:
-                    # First convert Decimal128 to float if needed
-                    if isinstance(value, Decimal128):
-                        value = float(value.to_decimal())
-                        
-                    if isinstance(value, (int, float, str)):
-                        num_value = float(value)
-                        if key.endswith('_per_liter') and num_value < 0:
+                    if isinstance(value, (int, float)):
+                        if key.endswith('_per_liter') and value < 0:
                             continue
-                        processed_sample[key] = num_value
+                        final_sample[key] = value
                     else:
-                        processed_sample[key] = value
+                        final_sample[key] = value
                 except (ValueError, TypeError):
-                    processed_sample[key] = value
+                    final_sample[key] = value
                     
-            if processed_sample:
-                processed_samples.append(processed_sample)
+            if final_sample:
+                processed_samples.append(final_sample)
 
         # Generate cache key based on data
-        data_hash = generate_data_hash(str(processed_samples))
+        data_hash = generate_data_hash(json.dumps(processed_samples, sort_keys=True))
         
         # Check cache
         cached_result = get_cached_analysis(data_hash)
