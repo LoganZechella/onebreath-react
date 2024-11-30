@@ -603,7 +603,7 @@ def ai_analysis():
         return '', 200
         
     try:
-        from ..main import analyzed_collection
+        from ..main import analyzed_collection, openai_client
         
         # Fetch and preprocess data
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
@@ -642,7 +642,7 @@ def ai_analysis():
                 processed_samples.append(processed_sample)
 
         # Generate cache key based on data
-        data_hash = generate_data_hash(str(processed_samples))  # Convert to string before hashing
+        data_hash = generate_data_hash(str(processed_samples))
         
         # Check cache
         cached_result = get_cached_analysis(data_hash)
@@ -672,7 +672,17 @@ def ai_analysis():
         5. Notable Outliers
         
         Format your response in clear sections with statistical insights and clinical relevance.
-        Use precise numerical values and include confidence levels where applicable."""
+        Use precise numerical values and include confidence levels where applicable.
+        
+        For each section, format your response as:
+        [Section Title]
+        Key Finding: [brief summary]
+        Statistical Details:
+        - [metric]: [value]
+        - [metric]: [value]
+        
+        Analysis:
+        [detailed analysis paragraph]"""
 
         user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following focus:
 
@@ -691,17 +701,17 @@ def ai_analysis():
 
         try:
             # Initialize OpenAI client
-            client = openai_client
-            if not client:
+            if not openai_client:
                 raise Exception("OpenAI client not initialized")
 
             # Make API call with retry logic
             max_retries = 3
             retry_count = 0
+            last_error = None
             
             while retry_count < max_retries:
                 try:
-                    response = client.chat.completions.create(
+                    response = openai_client.chat.completions.create(
                         model="gpt-4o",
                         messages=[
                             {"role": "system", "content": system_prompt},
@@ -724,16 +734,18 @@ def ai_analysis():
                     })
                     
                 except Exception as e:
+                    last_error = str(e)
+                    logger.error(f"OpenAI API Error (attempt {retry_count + 1}): {str(e)}")
                     retry_count += 1
                     if retry_count == max_retries:
-                        raise e
+                        raise Exception(f"OpenAI API failed after {max_retries} attempts. Last error: {last_error}")
                     time.sleep(2 ** retry_count)  # Exponential backoff
                     
         except Exception as e:
             logger.error(f"OpenAI API Error: {str(e)}")
             return jsonify({
                 "success": False,
-                "error": "Failed to generate AI analysis",
+                "error": str(e),
                 "retry_count": retry_count
             }), 500
 
