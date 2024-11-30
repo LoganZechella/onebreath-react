@@ -172,7 +172,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     return sections.map((section, sectionIndex) => (
       <div 
         key={`section-${sectionIndex}`} 
-        className="min-w-[400px] bg-white dark:bg-gray-800 rounded-lg p-4 
+        className="min-w-[400px] flex-none bg-white dark:bg-gray-800 rounded-lg p-4 
                  shadow-sm border border-gray-200 dark:border-gray-700
                  hover:shadow-md transition-all duration-200"
       >
@@ -186,27 +186,23 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
               <div key={`voc-${index}`} className="border-t border-gray-100 dark:border-gray-700 pt-3">
                 <div className="font-medium text-gray-900 dark:text-white mb-2">{voc.name}</div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 block">Concentration (nmol)</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        Mean: {voc.nanomoles.mean}
-                      </span>
-                      <span className="text-sm text-gray-600 dark:text-gray-300 block">
-                        Range: {voc.nanomoles.range}
-                      </span>
-                    </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Concentration (nmol)</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Mean: {voc.nanomoles.mean}
+                    </span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300 block">
+                      Range: {voc.nanomoles.range}
+                    </span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 block">Per Liter (nmol/L)</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        Mean: {voc.perLiter.mean}
-                      </span>
-                      <span className="text-sm text-gray-600 dark:text-gray-300 block">
-                        Range: {voc.perLiter.range}
-                      </span>
-                    </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Per Liter (nmol/L)</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Mean: {voc.perLiter.mean}
+                    </span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300 block">
+                      Range: {voc.perLiter.range}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -277,7 +273,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6"
+            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6 py-2"
           >
             {renderStats()}
           </div>
