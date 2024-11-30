@@ -660,27 +660,35 @@ def ai_analysis():
         
         # Create prompt for OpenAI
         system_prompt = """You are a data analysis expert specializing in VOC (Volatile Organic Compounds) analysis. 
-        Analyze the provided dataset focusing on VOC concentrations and their relationships with sample locations.
-        
-        Key areas to analyze:
-        1. VOC Concentration Patterns
-        2. Location-based Variations
-        3. Compound Correlations
-        4. Temporal Trends
-        5. Notable Outliers
-        
-        Format your response in clear sections with statistical insights and clinical relevance.
-        Use precise numerical values and include confidence levels where applicable.
-        
-        For each section, format your response as:
-        [Section Title]
-        Key Finding: [brief summary]
-        Statistical Details:
-        - [metric]: [value]
-        - [metric]: [value]
-        
-        Analysis:
-        [detailed analysis paragraph]"""
+Analyze the provided dataset focusing on VOC concentrations and their relationships with sample locations.
+
+Format your response in clear sections. Each section should start with a title prefixed by '###'.
+For each section:
+1. Start with a "Key Finding" summary
+2. Follow with "Statistical Details" using label: value format
+3. End with a detailed analysis paragraph
+
+Example format:
+### VOC Concentration Patterns
+Key Finding: [brief summary]
+Statistical Details:
+2-Butanone Mean: 0.123 nmol
+2-Butanone Range: 0.05 - 0.25 nmol
+Correlation with CO2: 0.85
+
+Analysis: [detailed paragraph]
+
+### Location-based Variations
+[continue same format]
+
+Focus on:
+1. VOC Concentration Patterns
+2. Location-based Variations
+3. Compound Correlations
+4. Temporal Trends
+5. Quality Metrics
+
+Use precise numerical values and include confidence levels where applicable."""
 
         user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following focus:
 

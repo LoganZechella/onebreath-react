@@ -51,23 +51,42 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   const parseInsights = (text: string) => {
     const sections = text.split('\n\n').filter(Boolean).map(section => {
       const lines = section.split('\n');
-      const title = lines[0].trim();
-      const content = lines.slice(1).filter(line => line.trim());
       
+      let title = lines[0].replace(/^###\s*/, '').replace(/^#+\s*/, '').trim();
+      
+      const content = lines.slice(1)
+        .filter(line => line.trim())
+        .map(line => {
+          return line
+            .replace(/^\s*[*-]\s+/, '')  // Remove list markers
+            .replace(/^#+\s*/, '')       // Remove any header markers
+            .trim();
+        });
+
       const stats: Stat[] = [];
+      let currentCompound = '';
+      
       content.forEach(line => {
-        if (line.includes(':')) {
+        if (line.endsWith(':')) {
+          currentCompound = line.slice(0, -1).trim();
+        } else if (line.includes(':')) {
           const [label, value] = line.split(':').map(s => s.trim());
           if (label && value) {
-            stats.push({ label, value });
+            const fullLabel = currentCompound ? `${currentCompound} - ${label}` : label;
+            stats.push({ label: fullLabel, value });
           }
         }
       });
 
-      return { title, content, stats };
+      return { 
+        title,
+        content: content.filter(line => !line.includes(':')),
+        stats: stats.length > 0 ? stats : undefined
+      };
     });
 
-    setSections(sections);
+    setSections(sections.filter(section => section.title && 
+      (section.content.length > 0 || (section.stats && section.stats.length > 0))));
   };
 
   if (!isOpen) return null;
@@ -166,7 +185,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                       transition={{ delay: index * 0.1 }}
                       className="analysis-section"
                     >
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 
+                                     relative after:absolute after:bottom-0 after:left-0 after:w-full 
+                                     after:h-0.5 after:bg-gradient-to-r after:from-primary/30 after:to-transparent">
                         {section.title}
                       </h3>
                       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg
@@ -196,7 +217,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                         ) : (
                           <div className="space-y-2">
                             {section.content.map((line, lineIdx) => (
-                              <p key={lineIdx} className="text-gray-700 dark:text-gray-300">
+                              <p key={lineIdx} className="text-gray-700 dark:text-gray-300 leading-relaxed">
                                 {line}
                               </p>
                             ))}
