@@ -172,9 +172,9 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     return sections.map((section, sectionIndex) => (
       <div 
         key={`section-${sectionIndex}`} 
-        className="inline-block min-w-[400px] flex-none bg-white dark:bg-gray-800 rounded-lg p-4 
+        className="inline-block min-w-[400px] h-[140px] flex-none bg-white dark:bg-gray-800 rounded-lg p-4 
                  shadow-sm border border-gray-200 dark:border-gray-700
-                 hover:shadow-md transition-all duration-200"
+                 hover:shadow-md transition-all duration-200 overflow-y-auto"
       >
         <h4 className="text-sm font-semibold text-primary dark:text-primary-light mb-3">
           {section.title}
@@ -235,15 +235,15 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
   };
 
   return (
-    <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 mb-4">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 mb-4 h-[200px]">
+      <div className="max-w-7xl mx-auto px-4 h-full">
         <div className="py-2 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             Data Overview
           </h2>
         </div>
 
-        <div className="relative py-2">
+        <div className="relative h-[calc(100%-40px)]">
           {showLeftScroll && (
             <button
               onClick={() => scroll('left')}
@@ -273,7 +273,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6 py-2 whitespace-nowrap"
+            className="overflow-x-auto overflow-y-hidden hide-scrollbar flex gap-3 mx-6 py-2 h-full"
           >
             {renderStats()}
           </div>
