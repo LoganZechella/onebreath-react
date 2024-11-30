@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { sampleService } from '../../services/api';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -11,25 +12,31 @@ interface Stat {
   value: string;
 }
 
+interface AnalysisSection {
+  title: string;
+  content: string[];
+  stats?: Stat[];
+}
+
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [insights, setInsights] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
+  const [sections, setSections] = useState<AnalysisSection[]>([]);
 
-  console.log('Current insights state:', insights);
-
-  const fetchInsights = async (retryCount = 0) => {
+  const fetchInsights = async (retry = 0) => {
     setLoading(true);
     setError(null);
+    setRetryCount(retry);
+
     try {
       const data = await sampleService.getAIAnalysis();
-      console.log('API Response:', data);
+      
       if (data.success && data.insights) {
-        console.log('Setting insights:', data.insights);
-        setInsights(data.insights);
-      } else if (data.error?.includes('timed out') && retryCount < 2) {
+        parseInsights(data.insights);
+      } else if (data.error?.includes('timed out') && retry < 2) {
         await new Promise(resolve => setTimeout(resolve, 2000));
-        return fetchInsights(retryCount + 1);
+        return fetchInsights(retry + 1);
       } else {
         setError(data.error || 'Failed to generate insights');
       }
@@ -41,91 +48,54 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     }
   };
 
-  const renderInsights = (text: string) => {
-    console.log('Raw insights text:', text);
-    
-    const sections = text.split('\n\n').filter(Boolean);
-    
-    return (
-      <div className="space-y-8">
-        {sections.map((section, index) => {
-          if (index === 0) {
-            return (
-              <h3 key={`title-${index}`} className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                {section}
-              </h3>
-            );
+  const parseInsights = (text: string) => {
+    const sections = text.split('\n\n').filter(Boolean).map(section => {
+      const lines = section.split('\n');
+      const title = lines[0].trim();
+      const content = lines.slice(1).filter(line => line.trim());
+      
+      const stats: Stat[] = [];
+      content.forEach(line => {
+        if (line.includes(':')) {
+          const [label, value] = line.split(':').map(s => s.trim());
+          if (label && value) {
+            stats.push({ label, value });
           }
-          
-          const lines = section.split('\n');
-          const title = lines[0];
-          
-          if (!title) return null;
-          
-          // Skip empty lines and process stats
-          const stats: Stat[] = [];
-          let currentCompound = '';
-          
-          for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            if (line.endsWith(':')) {
-              currentCompound = line.slice(0, -1);
-            } else if (line.includes(':')) {
-              const [label, value] = line.split(':').map(s => s.trim());
-              if (label && value) {
-                stats.push({ label, value });
-              }
-            }
-          }
+        }
+      });
 
-          if (stats.length === 0) return null;
+      return { title, content, stats };
+    });
 
-          return (
-            <div key={`section-${index}`} className="measurement-section mb-8">
-              <h4 className="text-xl font-semibold text-primary dark:text-primary-light mb-6">
-                {title}
-              </h4>
-              <div className="measurement-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                {currentCompound && (
-                  <h5 className="compound-name text-lg font-medium mb-3">
-                    {currentCompound}
-                  </h5>
-                )}
-                <div className="stat-grid grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  {stats.map((stat, statIdx) => (
-                    <div key={`stat-${statIdx}`} className="stat-item">
-                      <span className="stat-label text-sm text-gray-500 dark:text-gray-400 block">
-                        {stat.label}
-                      </span>
-                      <span className="stat-value font-medium">
-                        {stat.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
+    setSections(sections);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto pt-8 pb-8">
-      <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 my-auto insights-fade-in border border-gray-200 dark:border-gray-700">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto pt-8 pb-8"
+    >
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 20, opacity: 0 }}
+        className="bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 my-auto 
+                 border border-gray-200 dark:border-gray-700"
+      >
         <div className="p-8">
+          {/* Header */}
           <div className="flex justify-between items-center mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-4">
             <div>
-              <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
-                AI Insights
+              <h2 className="text-2xl font-bold bg-clip-text text-transparent 
+                           bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
+                AI Analysis Insights
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Analysis based on collected samples
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Advanced analysis of VOC patterns and correlations
               </p>
             </div>
             <button
@@ -139,34 +109,125 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
               </svg>
             </button>
           </div>
-          
-          <div className="prose dark:prose-invert max-w-none modal-content overflow-y-auto max-h-[60vh] pr-4">
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            ) : error ? (
-              <div className="text-red-500 dark:text-red-400 text-center py-8">
-                {error}
-              </div>
-            ) : insights ? (
-              <div className="space-y-8">
-                {renderInsights(insights)}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <button
-                  onClick={() => fetchInsights(0)}
-                  className="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg
-                           transition-colors shadow-lg hover:shadow-primary/20"
+
+          {/* Content */}
+          <div className="prose dark:prose-invert max-w-none modal-content overflow-y-auto max-h-[70vh] pr-4">
+            <AnimatePresence mode="wait">
+              {loading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center py-12 space-y-4"
                 >
-                  Generate Insights
-                </button>
-              </div>
-            )}
+                  <div className="relative">
+                    <div className="w-16 h-16 border-4 border-primary/20 rounded-full animate-spin">
+                      <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary rounded-full animate-spin-fast" 
+                           style={{ animationDirection: 'reverse' }}></div>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {retryCount > 0 ? `Retry attempt ${retryCount}/3...` : 'Generating analysis...'}
+                  </p>
+                </motion.div>
+              ) : error ? (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-center py-8"
+                >
+                  <div className="text-red-500 dark:text-red-400 mb-4">
+                    {error}
+                  </div>
+                  <button
+                    onClick={() => fetchInsights(0)}
+                    className="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg
+                             transition-colors shadow-lg hover:shadow-primary/20"
+                  >
+                    Try Again
+                  </button>
+                </motion.div>
+              ) : sections.length > 0 ? (
+                <motion.div
+                  key="content"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-8"
+                >
+                  {sections.map((section, index) => (
+                    <motion.div
+                      key={`section-${index}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="analysis-section"
+                    >
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                        {section.title}
+                      </h3>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg
+                                    border border-gray-200 dark:border-gray-700
+                                    hover:shadow-xl transition-shadow duration-300">
+                        {section.stats && section.stats.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {section.stats.map((stat, statIdx) => (
+                              <motion.div
+                                key={`stat-${statIdx}`}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: statIdx * 0.05 }}
+                                className="stat-card bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg
+                                         hover:bg-gray-100 dark:hover:bg-gray-700 
+                                         transition-colors duration-200"
+                              >
+                                <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
+                                  {stat.label}
+                                </span>
+                                <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  {stat.value}
+                                </span>
+                              </motion.div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {section.content.map((line, lineIdx) => (
+                              <p key={lineIdx} className="text-gray-700 dark:text-gray-300">
+                                {line}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-center py-8"
+                >
+                  <button
+                    onClick={() => fetchInsights(0)}
+                    className="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg
+                             transition-colors shadow-lg hover:shadow-primary/20
+                             transform hover:-translate-y-0.5 duration-200"
+                  >
+                    Generate Analysis
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 } 

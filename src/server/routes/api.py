@@ -19,6 +19,8 @@ import logging
 from datetime import timezone
 from ..utils.cache import get_cached_analysis, cache_analysis, generate_data_hash
 from ..utils.mongo import get_db_client
+import openai
+from ..main import openai_client
 
 
 logger = logging.getLogger(__name__)
@@ -601,10 +603,135 @@ def ai_analysis():
         return '', 200
         
     try:
-        return jsonify({
-            "success": False,
-            "message": "AI Analysis coming soon"
-        }), 200
+        from ..main import analyzed_collection
+        
+        # Fetch and preprocess data
+        analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
+        if not analyzed_samples:
+            return jsonify({
+                "success": False,
+                "error": "No analyzed samples available"
+            }), 404
+
+        # Convert samples and clean data
+        processed_samples = []
+        for sample in analyzed_samples:
+            # Skip samples with errors or missing values
+            if sample.get('error'):
+                continue
+                
+            # Convert all numeric fields and filter negative values
+            processed_sample = {}
+            for key, value in sample.items():
+                try:
+                    if isinstance(value, (int, float, str)):
+                        num_value = float(value)
+                        if key.endswith('_per_liter') and num_value < 0:
+                            continue
+                        processed_sample[key] = num_value
+                    else:
+                        processed_sample[key] = value
+                except (ValueError, TypeError):
+                    processed_sample[key] = value
+                    
+            if processed_sample:
+                processed_samples.append(processed_sample)
+
+        # Generate cache key based on data
+        data_hash = generate_data_hash(processed_samples)
+        cached_result = get_cached_analysis(data_hash)
+        
+        if cached_result:
+            return jsonify({
+                "success": True,
+                "insights": cached_result,
+                "cached": True
+            })
+
+        # Prepare data summary for OpenAI
+        voc_fields = [
+            '2-Butanone', 'Pentanal', 'Decanal', 
+            '2-hydroxy-acetaldehyde', '2-hydroxy-3-butanone',
+            '4-HHE', '4-HNE'
+        ]
+        
+        # Create prompt for OpenAI
+        system_prompt = """You are a data analysis expert specializing in VOC (Volatile Organic Compounds) analysis. 
+        Analyze the provided dataset focusing on VOC concentrations and their relationships with sample locations.
+        
+        Key areas to analyze:
+        1. VOC Concentration Patterns
+        2. Location-based Variations
+        3. Compound Correlations
+        4. Temporal Trends
+        5. Notable Outliers
+        
+        Format your response in clear sections with statistical insights and clinical relevance.
+        Use precise numerical values and include confidence levels where applicable."""
+
+        user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following focus:
+
+        1. Primary Analysis:
+           - Analyze concentrations and patterns for these VOCs: {', '.join(voc_fields)}
+           - Compare concentrations between CT and BCC locations
+           - Identify any significant correlations between compounds
+           - Examine temporal trends in VOC levels
+
+        2. Supporting Analysis:
+           - Provide key descriptive statistics
+           - Highlight any notable outliers
+           - Assess sample quality metrics
+
+        Format your response in clear sections that can be parsed into a structured display."""
+
+        try:
+            # Initialize OpenAI client
+            client = openai_client
+            if not client:
+                raise Exception("OpenAI client not initialized")
+
+            # Make API call with retry logic
+            max_retries = 3
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                            {"role": "user", "content": f"Data: {json.dumps(processed_samples)}"}
+                        ],
+                        temperature=0.2,
+                        max_tokens=2000
+                    )
+                    
+                    analysis_text = response.choices[0].message.content
+                    
+                    # Cache the result
+                    cache_analysis(data_hash, analysis_text)
+                    
+                    return jsonify({
+                        "success": True,
+                        "insights": analysis_text,
+                        "cached": False
+                    })
+                    
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        raise e
+                    time.sleep(2 ** retry_count)  # Exponential backoff
+                    
+        except Exception as e:
+            logger.error(f"OpenAI API Error: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": "Failed to generate AI analysis",
+                "retry_count": retry_count
+            }), 500
+
     except Exception as e:
         logger.error(f"AI Analysis Error: {str(e)}")
         return jsonify({

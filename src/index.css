@@ -374,3 +374,42 @@
 .smooth-scroll {
   scroll-behavior: smooth;
 }
+
+@keyframes spin-fast {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-fast {
+  animation: spin-fast 0.8s linear infinite;
+}
+
+.analysis-section {
+  @apply transition-all duration-300;
+}
+
+.analysis-section:hover {
+  @apply transform -translate-y-1;
+}
+
+.stat-card {
+  @apply transform transition-all duration-200;
+}
+
+.stat-card:hover {
+  @apply -translate-y-0.5 shadow-md;
+}
+
+.modal-content::-webkit-scrollbar {
+  @apply w-2;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800 rounded-full;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  @apply bg-primary/40 dark:bg-primary-light/40 rounded-full
+         hover:bg-primary/60 dark:hover:bg-primary-light/60;
+}
