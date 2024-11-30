@@ -172,7 +172,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     return sections.map((section, sectionIndex) => (
       <div 
         key={`section-${sectionIndex}`} 
-        className="min-w-[400px] flex-none bg-white dark:bg-gray-800 rounded-lg p-4 
+        className="inline-block min-w-[400px] flex-none bg-white dark:bg-gray-800 rounded-lg p-4 
                  shadow-sm border border-gray-200 dark:border-gray-700
                  hover:shadow-md transition-all duration-200"
       >
@@ -273,7 +273,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6 py-2"
+            className="overflow-x-auto hide-scrollbar flex gap-3 mx-6 py-2 whitespace-nowrap"
           >
             {renderStats()}
           </div>
