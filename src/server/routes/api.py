@@ -718,14 +718,15 @@ Use precise numerical values and include confidence levels where applicable."""
             while retry_count < max_retries:
                 try:
                     response = openai_client.chat.completions.create(
-                        model="gpt-4o",
+                        model="gpt-4o-2024-11-20",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
                             {"role": "user", "content": f"Data: {json.dumps(processed_samples)}"}
                         ],
                         temperature=0.2,
-                        max_tokens=2000
+                        max_tokens=4096,
+                        tool_choice="auto"
                     )
                     
                     analysis_text = response.choices[0].message.content
