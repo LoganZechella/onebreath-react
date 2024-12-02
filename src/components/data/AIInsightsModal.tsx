@@ -183,7 +183,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="analysis-section"
+                      className="analysis-section mb-8"
                     >
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 
                                      relative after:absolute after:bottom-0 after:left-0 after:w-full 
@@ -217,9 +217,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="text-gray-700 dark:text-gray-300">
                           {section.content.map((line, lineIdx) => (
-                            <p key={lineIdx} className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            <p key={lineIdx} className="mb-3 leading-relaxed">
                               {line}
                             </p>
                           ))}
