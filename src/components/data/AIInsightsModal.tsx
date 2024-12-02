@@ -190,10 +190,11 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                                      after:h-0.5 after:bg-gradient-to-r after:from-primary/30 after:to-transparent">
                         {section.title}
                       </h3>
-                      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg
-                                    border border-gray-200 dark:border-gray-700
-                                    hover:shadow-xl transition-shadow duration-300">
-                        {section.stats && section.stats.length > 0 ? (
+                      
+                      {section.stats && section.stats.length > 0 ? (
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg
+                                      border border-gray-200 dark:border-gray-700
+                                      hover:shadow-xl transition-shadow duration-300">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {section.stats.map((stat, statIdx) => (
                               <motion.div
@@ -214,16 +215,16 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                               </motion.div>
                             ))}
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {section.content.map((line, lineIdx) => (
-                              <p key={lineIdx} className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                {line}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {section.content.map((line, lineIdx) => (
+                            <p key={lineIdx} className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                 </motion.div>
