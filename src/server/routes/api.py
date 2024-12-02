@@ -725,8 +725,7 @@ Use precise numerical values and include confidence levels where applicable."""
                             {"role": "user", "content": f"Data: {json.dumps(processed_samples)}"}
                         ],
                         temperature=0.2,
-                        max_tokens=4096,
-                        tool_choice="auto"
+                        max_completion_tokens=8192
                     )
                     
                     analysis_text = response.choices[0].message.content
