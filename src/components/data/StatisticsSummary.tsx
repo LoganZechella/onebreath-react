@@ -220,6 +220,11 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
       const stat = section.vocStats[0];
       const isPriorityStat = stat.name === 'final_volume' || stat.name === 'average_co2';
 
+      const formatNumber = (value: string, isVolume: boolean): string => {
+        const num = parseFloat(value);
+        return isVolume ? Math.round(num).toString() : num.toFixed(1);
+      };
+
       return (
         <div 
           key={`section-${sectionIndex}`} 
@@ -237,9 +242,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
                 Value
               </span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                Mean: {stat.name === 'final_volume' 
-                  ? Math.round(parseFloat(stat.nanomoles.mean))
-                  : parseFloat(stat.nanomoles.mean).toFixed(1)}
+                Mean: {formatNumber(stat.nanomoles.mean, stat.name === 'final_volume')}
                 {stat.name === 'final_volume' ? ' mL' : '%'}
               </span>
               <span className="text-xs text-gray-600 dark:text-gray-300 block truncate">
