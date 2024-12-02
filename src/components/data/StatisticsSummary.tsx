@@ -34,6 +34,30 @@ interface StatSection {
   additionalStats?: AdditionalStat[];
 }
 
+const formatFieldName = (fieldName: string): string => {
+  const formattingRules: Record<string, string> = {
+    '2-Butanone': '2-Butanone',
+    'Pentanal': 'Pentanal',
+    'Decanal': 'Decanal',
+    '2-hydroxy-acetaldehyde': '2-Hydroxy-acetaldehyde',
+    '2-hydroxy-3-butanone': '2-Hydroxy-3-butanone',
+    '4-HHE': '4-HHE',
+    '4-HNE': '4-HNE',
+    '2-Butanone_per_liter': '2-Butanone per Liter',
+    'Pentanal_per_liter': 'Pentanal per Liter',
+    'Decanal_per_liter': 'Decanal per Liter',
+    '2-hydroxy-acetaldehyde_per_liter': '2-Hydroxy-acetaldehyde per Liter',
+    '2-hydroxy-3-butanone_per_liter': '2-Hydroxy-3-butanone per Liter',
+    '4-HHE_per_liter': '4-HHE per Liter',
+    '4-HNE_per_liter': '4-HNE per Liter'
+  };
+
+  return formattingRules[fieldName] || fieldName.replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export default function StatisticsSummary({ insights }: StatisticsSummaryProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
@@ -172,46 +196,45 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     return sections.map((section, sectionIndex) => (
       <div 
         key={`section-${sectionIndex}`} 
-        className="inline-block min-w-[400px] h-[140px] flex-none bg-white dark:bg-gray-800 rounded-lg p-4 
-                 shadow-sm border border-gray-200 dark:border-gray-700
-                 hover:shadow-md transition-all duration-200 overflow-y-auto"
+        className="inline-block min-w-[300px] max-w-[300px] h-[140px] flex-none bg-white dark:bg-gray-800 
+                 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700
+                 hover:shadow-md transition-all duration-200"
       >
-        <h4 className="text-sm font-semibold text-primary dark:text-primary-light mb-3">
-          {section.title}
+        <h4 className="text-sm font-semibold text-primary dark:text-primary-light mb-2">
+          {section.vocStats ? formatFieldName(section.vocStats[0].name) : section.title}
         </h4>
         
         {section.vocStats && (
-          <div className="space-y-4">
-            {section.vocStats.map((voc, index) => (
-              <div key={`voc-${index}`} className="border-t border-gray-100 dark:border-gray-700 pt-3">
-                <div className="font-medium text-gray-900 dark:text-white mb-2">{voc.name}</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Concentration (nmol)</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Mean: {voc.nanomoles.mean}
-                    </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 block">
-                      Range: {voc.nanomoles.range}
-                    </span>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Per Liter (nmol/L)</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Mean: {voc.perLiter.mean}
-                    </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 block">
-                      Range: {voc.perLiter.range}
-                    </span>
-                  </div>
-                </div>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                  Concentration (nmol)
+                </span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Mean: {section.vocStats[0].nanomoles.mean}
+                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-300 block">
+                  Range: {section.vocStats[0].nanomoles.range}
+                </span>
               </div>
-            ))}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                  Per Liter (nmol/L)
+                </span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Mean: {section.vocStats[0].perLiter.mean}
+                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-300 block">
+                  Range: {section.vocStats[0].perLiter.range}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
         {section.additionalStats && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {section.additionalStats.map((stat, statIdx) => (
               <div 
                 key={`stat-${statIdx}`} 
@@ -223,7 +246,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
                   Mean: {stat.mean}
                 </span>
-                <span className="text-sm text-gray-600 dark:text-gray-300 block">
+                <span className="text-xs text-gray-600 dark:text-gray-300 block">
                   Range: {stat.range}
                 </span>
               </div>
@@ -235,7 +258,8 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
   };
 
   return (
-    <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 mb-4 h-[200px]">
+    <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm 
+                    border-b border-gray-200 dark:border-gray-700 mb-4 h-[200px]">
       <div className="max-w-7xl mx-auto px-4 h-full">
         <div className="py-2 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
