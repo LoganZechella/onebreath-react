@@ -20,22 +20,15 @@ interface VOCStat {
   };
 }
 
-interface AdditionalStat {
-  name: string;
-  mean: string;
-  median: string;
-  range: string;
-  sampleCount: string;
-}
-
 interface StatSection {
   title: string;
   vocStats?: VOCStat[];
-  additionalStats?: AdditionalStat[];
 }
 
 const formatFieldName = (fieldName: string): string => {
   const formattingRules: Record<string, string> = {
+    'final_volume': 'Final Volume (mL)',
+    'average_co2': 'Avg. CO2 (%)',
     '2-Butanone': '2-Butanone',
     'Pentanal': 'Pentanal',
     'Decanal': 'Decanal',
@@ -80,6 +73,31 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     let currentVOC: Partial<VOCStat> = {};
     let currentSection = '';
 
+    const priorityStats = ['final_volume', 'average_co2'];
+    priorityStats.forEach(statName => {
+      const stat = sections.find(section => 
+        section.toLowerCase().includes(statName.toLowerCase())
+      );
+      if (stat) {
+        const lines = stat.split('\n').filter(line => line.trim());
+        vocStats.push({
+          name: statName,
+          nanomoles: {
+            mean: lines.find(l => l.startsWith('Mean:'))?.split(': ')[1] || '',
+            median: lines.find(l => l.startsWith('Median:'))?.split(': ')[1] || '',
+            range: lines.find(l => l.startsWith('Range:'))?.split(': ')[1] || '',
+            sampleCount: lines.find(l => l.startsWith('Sample Count:'))?.split(': ')[1] || ''
+          },
+          perLiter: {
+            mean: '',
+            median: '',
+            range: '',
+            sampleCount: ''
+          }
+        });
+      }
+    });
+
     for (const section of sections) {
       const lines = section.split('\n').filter(line => line.trim());
       const title = lines[0].trim();
@@ -88,44 +106,9 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
         currentSection = 'nanomoles';
       } else if (title === 'VOC Measurements (nanomoles/liter of breath):') {
         currentSection = 'perLiter';
-      } else if (title === 'Additional Measurements:') {
-        const additionalStats: AdditionalStat[] = [];
-        let currentStat: Partial<AdditionalStat> = {};
-
-        lines.slice(1).forEach(line => {
-          if (line.endsWith(':')) {
-            if (currentStat.name) {
-              additionalStats.push(currentStat as AdditionalStat);
-            }
-            currentStat = { name: line.slice(0, -1) };
-          } else {
-            const [key, value] = line.split(': ');
-            switch (key) {
-              case 'Mean':
-                currentStat.mean = value;
-                break;
-              case 'Median':
-                currentStat.median = value;
-                break;
-              case 'Range':
-                currentStat.range = value;
-                break;
-              case 'Sample Count':
-                currentStat.sampleCount = value;
-                break;
-            }
-          }
-        });
-
-        if (currentStat.name) {
-          additionalStats.push(currentStat as AdditionalStat);
-        }
-
-        parsedSections.push({
-          title: 'Additional Measurements',
-          additionalStats
-        });
-      } else if (lines[0].endsWith(':')) {
+      } else if (lines[0].endsWith(':') && 
+                 !title.includes('Additional Measurements') && 
+                 !priorityStats.some(stat => title.toLowerCase().includes(stat))) {
         if (currentVOC.name) {
           vocStats.push(currentVOC as VOCStat);
         }
@@ -218,27 +201,6 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
                 </span>
               </div>
             </div>
-          </div>
-        )}
-
-        {section.additionalStats && (
-          <div className="grid grid-cols-2 gap-3">
-            {section.additionalStats.map((stat, statIdx) => (
-              <div 
-                key={`stat-${statIdx}`} 
-                className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2"
-              >
-                <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                  {stat.name}
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Mean: {stat.mean}
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-300 block">
-                  Range: {stat.range}
-                </span>
-              </div>
-            ))}
           </div>
         )}
       </div>
