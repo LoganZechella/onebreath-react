@@ -212,47 +212,71 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     }
 
     const sections = parseInsights();
-    return sections.map((section, sectionIndex) => (
-      <div 
-        key={`section-${sectionIndex}`} 
-        className="inline-block min-w-[300px] max-w-[300px] h-[140px] flex-none bg-white dark:bg-gray-800 
-                 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700
-                 hover:shadow-md transition-all duration-200"
-      >
-        <h4 className="text-sm font-semibold text-primary dark:text-primary-light mb-2">
-          {section.vocStats ? formatFieldName(section.vocStats[0].name) : section.title}
-        </h4>
-        
-        {section.vocStats && (
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
-                <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                  Concentration (nmol)
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Mean: {section.vocStats[0].nanomoles.mean}
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-300 block">
-                  Range: {section.vocStats[0].nanomoles.range}
-                </span>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
-                <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                  Per Liter (nmol/L)
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Mean: {section.vocStats[0].perLiter.mean}
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-300 block">
-                  Range: {section.vocStats[0].perLiter.range}
-                </span>
+    return sections.map((section, sectionIndex) => {
+      if (!section.vocStats || section.vocStats.length === 0) {
+        return null;
+      }
+
+      const stat = section.vocStats[0];
+      const isPriorityStat = stat.name === 'final_volume' || stat.name === 'average_co2';
+
+      return (
+        <div 
+          key={`section-${sectionIndex}`} 
+          className="inline-block min-w-[300px] max-w-[300px] h-[140px] flex-none bg-white dark:bg-gray-800 
+                   rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700
+                   hover:shadow-md transition-all duration-200 overflow-hidden"
+        >
+          <h4 className="text-sm font-semibold text-primary dark:text-primary-light mb-2 truncate">
+            {formatFieldName(stat.name)}
+          </h4>
+          
+          {isPriorityStat ? (
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2 h-[80px]">
+              <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                Value
+              </span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                Mean: {stat.name === 'final_volume' 
+                  ? Math.round(parseFloat(stat.nanomoles.mean))
+                  : parseFloat(stat.nanomoles.mean).toFixed(1)}
+                {stat.name === 'final_volume' ? ' mL' : '%'}
+              </span>
+              <span className="text-xs text-gray-600 dark:text-gray-300 block truncate">
+                Range: {stat.nanomoles.range}
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                    Concentration (nmol)
+                  </span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">
+                    Mean: {parseFloat(stat.nanomoles.mean).toFixed(1)}
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300 block truncate">
+                    Range: {stat.nanomoles.range}
+                  </span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                    Per Liter (nmol/L)
+                  </span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">
+                    Mean: {parseFloat(stat.perLiter.mean).toFixed(1)}
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300 block truncate">
+                    Range: {stat.perLiter.range}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    ));
+          )}
+        </div>
+      );
+    }).filter(Boolean);
   };
 
   return (
