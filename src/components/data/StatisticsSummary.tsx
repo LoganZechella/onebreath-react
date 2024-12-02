@@ -42,20 +42,10 @@ const formatFieldName = (fieldName: string): string => {
     '2-hydroxy-acetaldehyde': '2-Hydroxy-acetaldehyde',
     '2-hydroxy-3-butanone': '2-Hydroxy-3-butanone',
     '4-HHE': '4-HHE',
-    '4-HNE': '4-HNE',
-    '2-Butanone_per_liter': '2-Butanone per Liter',
-    'Pentanal_per_liter': 'Pentanal per Liter',
-    'Decanal_per_liter': 'Decanal per Liter',
-    '2-hydroxy-acetaldehyde_per_liter': '2-Hydroxy-acetaldehyde per Liter',
-    '2-hydroxy-3-butanone_per_liter': '2-Hydroxy-3-butanone per Liter',
-    '4-HHE_per_liter': '4-HHE per Liter',
-    '4-HNE_per_liter': '4-HNE per Liter'
+    '4-HNE': '4-HNE'
   };
 
-  return formattingRules[fieldName] || fieldName.replace(/_/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return formattingRules[fieldName] || fieldName;
 };
 
 export default function StatisticsSummary({ insights }: StatisticsSummaryProps) {
@@ -90,7 +80,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     let currentVOC: Partial<VOCStat> = {};
     let currentSection = '';
 
-    sections.forEach((section) => {
+    for (const section of sections) {
       const lines = section.split('\n').filter(line => line.trim());
       const title = lines[0].trim();
 
@@ -126,6 +116,7 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
             }
           }
         });
+
         if (currentStat.name) {
           additionalStats.push(currentStat as AdditionalStat);
         }
@@ -134,51 +125,48 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
           title: 'Additional Measurements',
           additionalStats
         });
-      } else {
-        const currentLine = lines[0];
-        if (currentLine.endsWith(':')) {
-          if (currentVOC.name) {
-            vocStats.push(currentVOC as VOCStat);
-          }
-          currentVOC = { 
-            name: currentLine.slice(0, -1),
-            nanomoles: { mean: '', median: '', range: '', sampleCount: '' },
-            perLiter: { mean: '', median: '', range: '', sampleCount: '' }
-          };
-        } else if (currentSection && currentVOC.name) {
-          const [key, value] = currentLine.split(': ');
-          const statSection = currentSection === 'nanomoles' ? 'nanomoles' : 'perLiter';
-          
-          if (currentVOC[statSection]) {
-            switch (key) {
-              case 'Mean':
-                currentVOC[statSection].mean = value;
-                break;
-              case 'Median':
-                currentVOC[statSection].median = value;
-                break;
-              case 'Range':
-                currentVOC[statSection].range = value;
-                break;
-              case 'Sample Count':
-                currentVOC[statSection].sampleCount = value;
-                break;
-            }
+      } else if (lines[0].endsWith(':')) {
+        if (currentVOC.name) {
+          vocStats.push(currentVOC as VOCStat);
+        }
+        currentVOC = {
+          name: lines[0].slice(0, -1),
+          nanomoles: { mean: '', median: '', range: '', sampleCount: '' },
+          perLiter: { mean: '', median: '', range: '', sampleCount: '' }
+        };
+      } else if (currentSection && currentVOC.name) {
+        const [key, value] = lines[0].split(': ');
+        const statSection = currentSection === 'nanomoles' ? 'nanomoles' : 'perLiter';
+        
+        if (currentVOC[statSection]) {
+          switch (key) {
+            case 'Mean':
+              currentVOC[statSection].mean = value;
+              break;
+            case 'Median':
+              currentVOC[statSection].median = value;
+              break;
+            case 'Range':
+              currentVOC[statSection].range = value;
+              break;
+            case 'Sample Count':
+              currentVOC[statSection].sampleCount = value;
+              break;
           }
         }
       }
-    });
+    }
 
     if (currentVOC.name) {
       vocStats.push(currentVOC as VOCStat);
     }
 
-    if (vocStats.length > 0) {
-      parsedSections.unshift({
+    vocStats.forEach(stat => {
+      parsedSections.push({
         title: 'VOC Measurements',
-        vocStats
+        vocStats: [stat]
       });
-    }
+    });
 
     return parsedSections;
   };
