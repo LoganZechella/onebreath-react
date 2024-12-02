@@ -49,6 +49,13 @@ interface SampleRegistrationData {
   timestamp: string;
 }
 
+interface StatisticsSummaryResponse {
+    success: boolean;
+    insights: string;
+    cached: boolean;
+    sampleCount: number;
+}
+
 export const sampleService = {
   getSamples: async (): Promise<Sample[]> => {
     try {
@@ -93,6 +100,16 @@ export const sampleService = {
         window.location.href = '/login';
       }
       return [];
+    }
+  },
+
+  getStatisticsSummary: async (): Promise<StatisticsSummaryResponse> => {
+    try {
+      const response = await api.get('/statistics_summary');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      throw error;
     }
   },
 

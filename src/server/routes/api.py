@@ -19,6 +19,8 @@ import logging
 from datetime import timezone
 from ..utils.cache import get_cached_analysis, cache_analysis, generate_data_hash
 from ..utils.mongo import get_db_client
+import openai
+from ..main import openai_client
 
 
 logger = logging.getLogger(__name__)
@@ -315,9 +317,9 @@ def generate_data_hash(data):
     """Generate a hash of the analyzed samples data for cache comparison"""
     return hashlib.md5(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
-@api.route('/ai_analysis', methods=['GET', 'OPTIONS'])
+@api.route('/statistics_summary', methods=['GET', 'OPTIONS'])
 @require_auth
-def ai_analysis():
+def statistics_summary():
     if request.method == 'OPTIONS':
         return '', 200
 
@@ -589,6 +591,172 @@ def update_expired_samples():
         }), 200
     except Exception as e:
         logger.error(f"Error updating expired samples: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@api.route('/ai_analysis', methods=['GET', 'OPTIONS'])
+@require_auth
+def ai_analysis():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        from ..main import analyzed_collection, openai_client
+        
+        # Fetch and preprocess data
+        analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
+        if not analyzed_samples:
+            return jsonify({
+                "success": False,
+                "error": "No analyzed samples available"
+            }), 404
+
+        # Convert samples and clean data
+        processed_samples = []
+        for sample in analyzed_samples:
+            # Skip samples with errors
+            if sample.get('error'):
+                continue
+                
+            # First convert the entire sample to handle Decimal128 and datetime
+            processed_sample = convert_sample(sample)
+            
+            # Then process numeric values and filter negatives
+            final_sample = {}
+            for key, value in processed_sample.items():
+                try:
+                    if isinstance(value, (int, float)):
+                        if key.endswith('_per_liter') and value < 0:
+                            continue
+                        final_sample[key] = value
+                    else:
+                        final_sample[key] = value
+                except (ValueError, TypeError):
+                    final_sample[key] = value
+                    
+            if final_sample:
+                processed_samples.append(final_sample)
+
+        # Generate cache key based on data
+        data_hash = generate_data_hash(json.dumps(processed_samples, sort_keys=True))
+        
+        # Check cache
+        cached_result = get_cached_analysis(data_hash)
+        if cached_result:
+            return jsonify({
+                "success": True,
+                "insights": cached_result,
+                "cached": True
+            })
+
+        # Prepare data summary for OpenAI
+        voc_fields = [
+            '2-Butanone', 'Pentanal', 'Decanal', 
+            '2-hydroxy-acetaldehyde', '2-hydroxy-3-butanone',
+            '4-HHE', '4-HNE'
+        ]
+        
+        # Create prompt for OpenAI
+        system_prompt = """You are a data analysis expert specializing in VOC (Volatile Organic Compounds) analysis. 
+Analyze the provided dataset focusing on VOC concentrations and their relationships with sample locations.
+
+Format your response in clear sections. Each section should start with a title prefixed by '###'.
+For each section:
+1. Start with a "Key Finding" summary
+2. Follow with "Statistical Details" using label: value format
+3. End with a detailed analysis paragraph
+
+Example format:
+### VOC Concentration Patterns
+Key Finding: [brief summary]
+Statistical Details:
+2-Butanone Mean: 0.123 nmol
+2-Butanone Range: 0.05 - 0.25 nmol
+Correlation with CO2: 0.85
+
+Analysis: [detailed paragraph]
+
+### Location-based Variations
+[continue same format]
+
+Focus on:
+1. VOC Concentration Patterns
+2. Location-based Variations
+3. Compound Correlations
+4. Temporal Trends
+5. Quality Metrics
+
+Use precise numerical values and include confidence levels where applicable."""
+
+        user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following focus:
+
+        1. Primary Analysis:
+           - Analyze concentrations and patterns for these VOCs: {', '.join(voc_fields)}
+           - Compare concentrations between CT and BCC locations
+           - Identify any significant correlations between compounds
+           - Examine temporal trends in VOC levels
+
+        2. Supporting Analysis:
+           - Provide key descriptive statistics
+           - Highlight any notable outliers
+           - Assess sample quality metrics
+
+        Format your response in clear sections that can be parsed into a structured display."""
+
+        try:
+            # Initialize OpenAI client
+            if not openai_client:
+                raise Exception("OpenAI client not initialized")
+
+            # Make API call with retry logic
+            max_retries = 3
+            retry_count = 0
+            last_error = None
+            
+            while retry_count < max_retries:
+                try:
+                    response = openai_client.chat.completions.create(
+                        model="gpt-4o-2024-11-20",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                            {"role": "user", "content": f"Data: {json.dumps(processed_samples)}"}
+                        ],
+                        temperature=0.2,
+                        max_completion_tokens=8192
+                    )
+                    
+                    analysis_text = response.choices[0].message.content
+                    
+                    # Cache the result
+                    cache_analysis(data_hash, analysis_text)
+                    
+                    return jsonify({
+                        "success": True,
+                        "insights": analysis_text,
+                        "cached": False
+                    })
+                    
+                except Exception as e:
+                    last_error = str(e)
+                    logger.error(f"OpenAI API Error (attempt {retry_count + 1}): {str(e)}")
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        raise Exception(f"OpenAI API failed after {max_retries} attempts. Last error: {last_error}")
+                    time.sleep(2 ** retry_count)  # Exponential backoff
+                    
+        except Exception as e:
+            logger.error(f"OpenAI API Error: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": str(e),
+                "retry_count": retry_count
+            }), 500
+
+    except Exception as e:
+        logger.error(f"AI Analysis Error: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)

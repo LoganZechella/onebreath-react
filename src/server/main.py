@@ -83,12 +83,14 @@ try:
     storage_client = storage.Client.from_service_account_json(Config.GCS_CREDENTIALS)
     bucket = storage_client.bucket(Config.GCS_BUCKET)
     
-    # Initialize OpenAI client
-    openai_client = OpenAI(
-        api_key=Config.OPENAI_API_KEY,
-        timeout=30.0,  # Set client timeout
-        max_retries=3  # Set client retries
-    )
+    # Initialize OpenAI client with minimal configuration
+    try:
+        openai_client = OpenAI(
+            api_key=Config.OPENAI_API_KEY
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+        openai_client = None  # Set to None so the app can still run without OpenAI
     
 except Exception as e:
     logger.error(f"Failed to initialize services: {str(e)}")
