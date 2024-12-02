@@ -70,9 +70,8 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
     const sections = insights.split('\n\n');
     const parsedSections: StatSection[] = [];
     const vocStats: VOCStat[] = [];
-    let currentVOC: Partial<VOCStat> = {};
-    let currentSection = '';
 
+    // First, find and process final_volume and average_co2
     const priorityStats = ['final_volume', 'average_co2'];
     priorityStats.forEach(statName => {
       const stat = sections.find(section => 
@@ -98,52 +97,77 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
       }
     });
 
-    for (const section of sections) {
-      const lines = section.split('\n').filter(line => line.trim());
-      const title = lines[0].trim();
+    // Process VOC measurements
+    let isNanomoles = false;
+    let isPerLiter = false;
 
-      if (title === 'VOC Measurements (nanomoles):') {
-        currentSection = 'nanomoles';
-      } else if (title === 'VOC Measurements (nanomoles/liter of breath):') {
-        currentSection = 'perLiter';
-      } else if (lines[0].endsWith(':') && 
-                 !title.includes('Additional Measurements') && 
-                 !priorityStats.some(stat => title.toLowerCase().includes(stat))) {
-        if (currentVOC.name) {
-          vocStats.push(currentVOC as VOCStat);
-        }
-        currentVOC = {
-          name: lines[0].slice(0, -1),
-          nanomoles: { mean: '', median: '', range: '', sampleCount: '' },
-          perLiter: { mean: '', median: '', range: '', sampleCount: '' }
-        };
-      } else if (currentSection && currentVOC.name) {
-        const [key, value] = lines[0].split(': ');
-        const statSection = currentSection === 'nanomoles' ? 'nanomoles' : 'perLiter';
+    sections.forEach(section => {
+      const lines = section.split('\n').filter(line => line.trim());
+      
+      if (lines[0] === 'VOC Measurements (nanomoles):') {
+        isNanomoles = true;
+        isPerLiter = false;
+        return;
+      }
+      
+      if (lines[0] === 'VOC Measurements (nanomoles/liter of breath):') {
+        isNanomoles = false;
+        isPerLiter = true;
+        return;
+      }
+
+      if (lines[0].endsWith(':') && !lines[0].includes('Additional Measurements')) {
+        const vocName = lines[0].slice(0, -1);
         
-        if (currentVOC[statSection]) {
+        // Skip if it's a priority stat
+        if (priorityStats.includes(vocName.toLowerCase())) {
+          return;
+        }
+
+        let existingVOC = vocStats.find(v => v.name === vocName);
+        
+        if (!existingVOC) {
+          existingVOC = {
+            name: vocName,
+            nanomoles: {
+              mean: '',
+              median: '',
+              range: '',
+              sampleCount: ''
+            },
+            perLiter: {
+              mean: '',
+              median: '',
+              range: '',
+              sampleCount: ''
+            }
+          };
+          vocStats.push(existingVOC);
+        }
+
+        const targetSection = isNanomoles ? existingVOC.nanomoles : existingVOC.perLiter;
+        
+        lines.slice(1).forEach(line => {
+          const [key, value] = line.split(': ');
           switch (key) {
             case 'Mean':
-              currentVOC[statSection].mean = value;
+              targetSection.mean = value;
               break;
             case 'Median':
-              currentVOC[statSection].median = value;
+              targetSection.median = value;
               break;
             case 'Range':
-              currentVOC[statSection].range = value;
+              targetSection.range = value;
               break;
             case 'Sample Count':
-              currentVOC[statSection].sampleCount = value;
+              targetSection.sampleCount = value;
               break;
           }
-        }
+        });
       }
-    }
+    });
 
-    if (currentVOC.name) {
-      vocStats.push(currentVOC as VOCStat);
-    }
-
+    // Convert all stats to sections
     vocStats.forEach(stat => {
       parsedSections.push({
         title: 'VOC Measurements',
