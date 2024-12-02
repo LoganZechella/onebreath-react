@@ -97,75 +97,99 @@ export default function StatisticsSummary({ insights }: StatisticsSummaryProps) 
       }
     });
 
-    // Process VOC measurements
-    let isNanomoles = false;
-    let isPerLiter = false;
-
-    sections.forEach(section => {
-      const lines = section.split('\n').filter(line => line.trim());
+    // Find the nanomoles and per liter sections
+    const nanomolesIndex = sections.findIndex(s => s.includes('VOC Measurements (nanomoles):'));
+    const perLiterIndex = sections.findIndex(s => s.includes('VOC Measurements (nanomoles/liter of breath):'));
+    
+    if (nanomolesIndex !== -1 && perLiterIndex !== -1) {
+      // Get all sections between these markers and the next marker or end
+      const nanomolesEnd = perLiterIndex;
+      const perLiterEnd = sections.findIndex((s, i) => i > perLiterIndex && s.includes('Additional Measurements:'));
       
-      if (lines[0] === 'VOC Measurements (nanomoles):') {
-        isNanomoles = true;
-        isPerLiter = false;
-        return;
-      }
-      
-      if (lines[0] === 'VOC Measurements (nanomoles/liter of breath):') {
-        isNanomoles = false;
-        isPerLiter = true;
-        return;
-      }
-
-      if (lines[0].endsWith(':') && !lines[0].includes('Additional Measurements')) {
-        const vocName = lines[0].slice(0, -1);
-        
-        // Skip if it's a priority stat
-        if (priorityStats.includes(vocName.toLowerCase())) {
-          return;
-        }
-
-        let existingVOC = vocStats.find(v => v.name === vocName);
-        
-        if (!existingVOC) {
-          existingVOC = {
-            name: vocName,
-            nanomoles: {
-              mean: '',
-              median: '',
-              range: '',
-              sampleCount: ''
-            },
-            perLiter: {
-              mean: '',
-              median: '',
-              range: '',
-              sampleCount: ''
-            }
-          };
-          vocStats.push(existingVOC);
-        }
-
-        const targetSection = isNanomoles ? existingVOC.nanomoles : existingVOC.perLiter;
-        
-        lines.slice(1).forEach(line => {
-          const [key, value] = line.split(': ');
-          switch (key) {
-            case 'Mean':
-              targetSection.mean = value;
-              break;
-            case 'Median':
-              targetSection.median = value;
-              break;
-            case 'Range':
-              targetSection.range = value;
-              break;
-            case 'Sample Count':
-              targetSection.sampleCount = value;
-              break;
+      // Process nanomoles sections
+      for (let i = nanomolesIndex + 1; i < nanomolesEnd; i++) {
+        const section = sections[i];
+        const lines = section.split('\n').filter(line => line.trim());
+        if (lines.length > 0 && lines[0].endsWith(':')) {
+          const vocName = lines[0].slice(0, -1);
+          
+          // Skip priority stats
+          if (priorityStats.includes(vocName.toLowerCase())) continue;
+          
+          let voc = vocStats.find(v => v.name === vocName);
+          if (!voc) {
+            voc = {
+              name: vocName,
+              nanomoles: {
+                mean: '',
+                median: '',
+                range: '',
+                sampleCount: ''
+              },
+              perLiter: {
+                mean: '',
+                median: '',
+                range: '',
+                sampleCount: ''
+              }
+            };
+            vocStats.push(voc);
           }
-        });
+          
+          lines.slice(1).forEach(line => {
+            const [key, value] = line.split(': ');
+            switch (key) {
+              case 'Mean':
+                voc!.nanomoles.mean = value;
+                break;
+              case 'Median':
+                voc!.nanomoles.median = value;
+                break;
+              case 'Range':
+                voc!.nanomoles.range = value;
+                break;
+              case 'Sample Count':
+                voc!.nanomoles.sampleCount = value;
+                break;
+            }
+          });
+        }
       }
-    });
+      
+      // Process per liter sections
+      const perLiterEndIndex = perLiterEnd === -1 ? sections.length : perLiterEnd;
+      for (let i = perLiterIndex + 1; i < perLiterEndIndex; i++) {
+        const section = sections[i];
+        const lines = section.split('\n').filter(line => line.trim());
+        if (lines.length > 0 && lines[0].endsWith(':')) {
+          const vocName = lines[0].slice(0, -1);
+          
+          // Skip priority stats
+          if (priorityStats.includes(vocName.toLowerCase())) continue;
+          
+          const voc = vocStats.find(v => v.name === vocName);
+          if (voc) {
+            lines.slice(1).forEach(line => {
+              const [key, value] = line.split(': ');
+              switch (key) {
+                case 'Mean':
+                  voc.perLiter.mean = value;
+                  break;
+                case 'Median':
+                  voc.perLiter.median = value;
+                  break;
+                case 'Range':
+                  voc.perLiter.range = value;
+                  break;
+                case 'Sample Count':
+                  voc.perLiter.sampleCount = value;
+                  break;
+              }
+            });
+          }
+        }
+      }
+    }
 
     // Convert all stats to sections
     vocStats.forEach(stat => {
