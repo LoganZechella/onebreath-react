@@ -17,10 +17,16 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(null);
 
-        // Ensure user is authenticated before making requests
+        // Ensure user is authenticated and has admin claims
         const user = auth.currentUser;
         if (!user) {
           throw new Error('User not authenticated');
+        }
+
+        // Force token refresh and check admin claim
+        const tokenResult = await user.getIdTokenResult(true);
+        if (!tokenResult.claims.admin) {
+          throw new Error('User does not have admin privileges');
         }
 
         // Try to establish socket connection first

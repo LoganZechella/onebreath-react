@@ -8,15 +8,22 @@ class AdminService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
 
+  private async getValidToken(): Promise<string> {
+    // Force token refresh to ensure we have a valid one
+    await auth.currentUser?.getIdTokenResult(true);
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      throw new Error('No auth token available');
+    }
+    return token;
+  }
+
   async connect() {
     if (this.socket?.connected) return;
 
     try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) {
-        throw new Error('No auth token available');
-      }
-
+      const token = await this.getValidToken();
+      
       this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
         auth: { token },
         transports: ['websocket', 'polling'],
@@ -78,10 +85,7 @@ class AdminService {
   }
 
   private async getAuthHeaders() {
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) {
-      throw new Error('No auth token available');
-    }
+    const token = await this.getValidToken();
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
