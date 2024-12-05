@@ -88,7 +88,8 @@ class AdminService {
     const token = await this.getValidToken();
     return {
       'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
     };
   }
 
@@ -132,22 +133,29 @@ class AdminService {
 
   async getRequestLogs(days: number = 3): Promise<RequestLog[]> {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
         {
-          headers: await this.getAuthHeaders(),
-          credentials: 'include',
+          method: 'GET',
+          headers: {
+            ...headers,
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
         }
       );
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
+      
       const data = await response.json();
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Error fetching request logs:', error);
-      return [];
+      throw error; // Re-throw to handle in component
     }
   }
 
