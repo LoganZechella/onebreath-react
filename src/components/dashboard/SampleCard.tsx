@@ -117,7 +117,7 @@ export default function SampleCard({ sample, onUpdateStatus, onPickupComplete }:
             )}
             {sample.status === 'Ready for Pickup' && (
               <button
-                onClick={() => handleStatusChange('Picked up. Ready for Analysis')}
+                onClick={() => setShowPickupForm(true)}
                 className="px-3 py-1 text-sm bg-accent-dark text-white rounded-full hover:bg-accent-light hover:text-accent-dark transition-colors font-bold"
               >
                 Pickup
