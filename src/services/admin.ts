@@ -5,31 +5,48 @@ import { auth } from './firebase';
 class AdminService {
   private socket: Socket | null = null;
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   async connect() {
     if (this.socket?.connected) return;
 
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) throw new Error('No auth token available');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('No auth token available');
+      }
 
-    this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
-      auth: { token },
-      transports: ['websocket'],
-      withCredentials: true,
-    });
+      this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        withCredentials: true,
+        reconnectionAttempts: this.maxReconnectAttempts,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      });
 
-    this.setupSocketListeners();
+      this.setupSocketListeners();
+    } catch (error) {
+      console.error('Socket connection error:', error);
+      throw error;
+    }
   }
 
   private setupSocketListeners() {
     if (!this.socket) return;
 
-    this.socket.on('connect', () => {
-      console.log('Connected to admin socket');
-    });
-
     this.socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        this.socket?.close();
+      }
+      this.reconnectAttempts++;
+    });
+
+    this.socket.on('connect', () => {
+      console.log('Socket connected successfully');
+      this.reconnectAttempts = 0;
     });
 
     this.socket.on('log_update', (data) => {
@@ -62,10 +79,12 @@ class AdminService {
 
   private async getAuthHeaders() {
     const token = await auth.currentUser?.getIdToken();
-    if (!token) throw new Error('No auth token available');
+    if (!token) {
+      throw new Error('No auth token available');
+    }
     return {
       'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     };
   }
 

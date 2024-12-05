@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminService } from '../../services/admin';
 import { LogEntry, RequestLog, ServerHealth } from '../../types/admin';
+import { auth } from '../../services/firebase';
 
 export default function AdminDashboard() {
   const [health, setHealth] = useState<ServerHealth | null>(null);
@@ -14,6 +15,17 @@ export default function AdminDashboard() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        // Ensure user is authenticated before making requests
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        // Try to establish socket connection first
+        await adminService.connect();
+
         const [healthData, errors, requests] = await Promise.all([
           adminService.getServerHealth(),
           adminService.getErrorLogs(),
@@ -25,8 +37,8 @@ export default function AdminDashboard() {
         setRequestLogs(Array.isArray(requests) ? requests : []);
         setActiveConnections(healthData.active_connections);
       } catch (err) {
-        setError('Failed to fetch admin data');
-        console.error(err);
+        console.error('Admin dashboard error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch admin data');
         setErrorLogs([]);
         setRequestLogs([]);
       } finally {
@@ -34,22 +46,8 @@ export default function AdminDashboard() {
       }
     };
 
-    // Initial fetch
     fetchData();
 
-    // Connect to WebSocket
-    adminService.connect();
-
-    // Set up real-time listeners
-    adminService.addListener('log_update', (log: LogEntry) => {
-      setErrorLogs(prev => [log, ...prev].slice(0, 100)); // Keep last 100 logs
-    });
-
-    adminService.addListener('connection_update', (data: { active_connections: number }) => {
-      setActiveConnections(data.active_connections);
-    });
-
-    // Cleanup
     return () => {
       adminService.disconnect();
     };
