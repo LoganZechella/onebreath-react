@@ -9,13 +9,20 @@ class AdminService {
   private maxReconnectAttempts = 5;
 
   private async getValidToken(): Promise<string> {
-    // Force token refresh to ensure we have a valid one
-    await auth.currentUser?.getIdTokenResult(true);
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) {
-      throw new Error('No auth token available');
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user');
     }
-    return token;
+
+    // Force token refresh to ensure we have latest claims
+    await user.getIdToken(true);
+    const tokenResult = await user.getIdTokenResult();
+    
+    if (!tokenResult.claims.admin) {
+      throw new Error('User does not have admin privileges');
+    }
+
+    return tokenResult.token;
   }
 
   async connect() {
@@ -26,14 +33,29 @@ class AdminService {
       
       this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
         auth: { token },
-        transports: ['websocket', 'polling'],
+        transports: ['websocket'],
         withCredentials: true,
         reconnectionAttempts: this.maxReconnectAttempts,
         reconnectionDelay: 1000,
         timeout: 10000
       });
 
-      this.setupSocketListeners();
+      return new Promise((resolve, reject) => {
+        if (!this.socket) return reject(new Error('Socket not initialized'));
+
+        this.socket.on('connect', () => {
+          console.log('Socket connected successfully');
+          this.reconnectAttempts = 0;
+          resolve(true);
+        });
+
+        this.socket.on('connect_error', (error) => {
+          console.error('Socket connection error:', error);
+          reject(error);
+        });
+
+        this.setupSocketListeners();
+      });
     } catch (error) {
       console.error('Socket connection error:', error);
       throw error;
@@ -139,35 +161,11 @@ class AdminService {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Content-Type': 'application/json'
           },
           credentials: 'include'
         }
       );
-      
-      if (response.status === 401) {
-        // Force token refresh and retry once
-        await auth.currentUser?.getIdToken(true);
-        const newToken = await this.getValidToken();
-        const retryResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${newToken}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            credentials: 'include'
-          }
-        );
-        
-        if (!retryResponse.ok) {
-          throw new Error('Failed to authenticate after token refresh');
-        }
-        return await retryResponse.json();
-      }
       
       if (!response.ok) {
         const errorData = await response.json();
