@@ -88,8 +88,7 @@ class AdminService {
     const token = await this.getValidToken();
     return {
       'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest'
+      'Content-Type': 'application/json'
     };
   }
 
@@ -133,18 +132,42 @@ class AdminService {
 
   async getRequestLogs(days: number = 3): Promise<RequestLog[]> {
     try {
-      const headers = await this.getAuthHeaders();
+      const token = await this.getValidToken();
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
         {
           method: 'GET',
           headers: {
-            ...headers,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           credentials: 'include'
         }
       );
+      
+      if (response.status === 401) {
+        // Force token refresh and retry once
+        await auth.currentUser?.getIdToken(true);
+        const newToken = await this.getValidToken();
+        const retryResponse = await fetch(
+          `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${newToken}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            credentials: 'include'
+          }
+        );
+        
+        if (!retryResponse.ok) {
+          throw new Error('Failed to authenticate after token refresh');
+        }
+        return await retryResponse.json();
+      }
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -155,7 +178,7 @@ class AdminService {
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Error fetching request logs:', error);
-      throw error; // Re-throw to handle in component
+      throw error;
     }
   }
 
