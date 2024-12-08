@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminService } from '../../services/admin';
 import { LogEntry, RequestLog, ServerHealth } from '../../types/admin';
+import { auth } from '../../services/firebase';
 
 export default function AdminDashboard() {
   const [health, setHealth] = useState<ServerHealth | null>(null);
@@ -11,9 +12,29 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const checkAdminStatus = async () => {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      const tokenResult = await user.getIdTokenResult(true);
+      if (!tokenResult.claims.admin) {
+        throw new Error('User does not have admin privileges');
+      }
+      return tokenResult;
+    };
+
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        // Verify admin status first
+        await checkAdminStatus();
+
+        // Connect to socket and fetch data
+        await adminService.connect();
+
         const [healthData, errors, requests] = await Promise.all([
           adminService.getServerHealth(),
           adminService.getErrorLogs(),
@@ -21,12 +42,13 @@ export default function AdminDashboard() {
         ]);
 
         setHealth(healthData);
-        setErrorLogs(Array.isArray(errors) ? errors : []);
-        setRequestLogs(Array.isArray(requests) ? requests : []);
-        setActiveConnections(healthData.active_connections);
+        setErrorLogs(errors);
+        setRequestLogs(requests);
+        setActiveConnections(healthData?.active_connections || 0);
       } catch (err) {
-        setError('Failed to fetch admin data');
-        console.error(err);
+        console.error('Admin dashboard error:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch admin data';
+        setError(errorMessage);
         setErrorLogs([]);
         setRequestLogs([]);
       } finally {
@@ -34,44 +56,28 @@ export default function AdminDashboard() {
       }
     };
 
-    // Initial fetch
-    fetchData();
-
-    // Connect to WebSocket
-    adminService.connect();
-
-    // Set up real-time listeners
-    adminService.addListener('log_update', (log: LogEntry) => {
-      setErrorLogs(prev => [log, ...prev].slice(0, 100)); // Keep last 100 logs
+    // Listen for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchData();
+      } else {
+        setError('Please sign in with an admin account');
+        setLoading(false);
+      }
     });
 
-    adminService.addListener('connection_update', (data: { active_connections: number }) => {
-      setActiveConnections(data.active_connections);
-    });
-
-    // Cleanup
     return () => {
+      unsubscribe();
       adminService.disconnect();
     };
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      </div>
-    );
+    return <div>Error: {error}</div>;
   }
 
   return (

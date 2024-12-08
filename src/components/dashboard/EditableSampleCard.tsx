@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sample } from '../../types';
+import { Sample, PickupData } from '../../types';
 import EditableField from './EditableField';
 import CountdownTimer from './CountdownTimer';
 import toast from 'react-hot-toast';
+import PickupForm from './PickupForm';
+import { updateSampleWithPickupData } from '../../services/api';
 
 interface EditableSampleCardProps {
   sample: Sample;
@@ -24,6 +26,7 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
     notes: { value: sample.notes || '', isEditing: false, isValid: true }
   });
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showPickupForm, setShowPickupForm] = useState(false);
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -104,6 +107,31 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
     } catch (error) {
       console.error('Error formatting timestamp:', error);
       return 'Invalid date';
+    }
+  };
+
+  const handlePickupFormSubmit = async (chipId: string, volume: number, co2: number, patientId: string, error?: string) => {
+    try {
+      const pickupData: PickupData = {
+        volume,
+        co2_level: co2,
+        patient_id: patientId,
+        error
+      };
+
+      await updateSampleWithPickupData(
+        chipId,
+        'Picked up. Ready for Analysis',
+        sample.sample_type || '',
+        pickupData
+      );
+
+      setShowPickupForm(false);
+      if (onPickupComplete) {
+        await onPickupComplete();
+      }
+    } catch (error) {
+      console.error('Error processing pickup:', error);
     }
   };
 
@@ -230,7 +258,7 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
               )}
               {sample.status === 'Ready for Pickup' && (
                 <button
-                  onClick={() => onUpdateStatus(sample.chip_id, 'Picked up. Ready for Analysis', sample.sample_type || '')}
+                  onClick={() => setShowPickupForm(true)}
                   className="px-3 py-1 text-sm bg-accent-dark text-white rounded-full 
                            hover:bg-accent-light hover:text-accent-dark transition-colors font-bold"
                 >
@@ -324,6 +352,13 @@ export default function EditableSampleCard({ sample, onUpdateStatus, onUpdateSam
           )}
         </motion.div>
       </motion.div>
+      <PickupForm
+        chipId={sample.chip_id}
+        patientId={sample.patient_id || 'Unknown'}
+        isOpen={showPickupForm}
+        onClose={() => setShowPickupForm(false)}
+        onSubmit={handlePickupFormSubmit}
+      />
     </AnimatePresence>
   );
 } 

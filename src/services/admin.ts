@@ -5,31 +5,77 @@ import { auth } from './firebase';
 class AdminService {
   private socket: Socket | null = null;
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+
+  private async getValidToken(): Promise<string> {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user');
+    }
+
+    // Force token refresh to ensure we have latest claims
+    await user.getIdToken(true);
+    const tokenResult = await user.getIdTokenResult();
+    
+    if (!tokenResult.claims.admin) {
+      throw new Error('User does not have admin privileges');
+    }
+
+    return tokenResult.token;
+  }
 
   async connect() {
     if (this.socket?.connected) return;
 
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) throw new Error('No auth token available');
+    try {
+      const token = await this.getValidToken();
+      
+      this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
+        auth: { token },
+        transports: ['websocket'],
+        withCredentials: true,
+        reconnectionAttempts: this.maxReconnectAttempts,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      });
 
-    this.socket = io(`${import.meta.env.VITE_API_URL}/admin`, {
-      auth: { token },
-      transports: ['websocket'],
-      withCredentials: true,
-    });
+      return new Promise((resolve, reject) => {
+        if (!this.socket) return reject(new Error('Socket not initialized'));
 
-    this.setupSocketListeners();
+        this.socket.on('connect', () => {
+          console.log('Socket connected successfully');
+          this.reconnectAttempts = 0;
+          resolve(true);
+        });
+
+        this.socket.on('connect_error', (error) => {
+          console.error('Socket connection error:', error);
+          reject(error);
+        });
+
+        this.setupSocketListeners();
+      });
+    } catch (error) {
+      console.error('Socket connection error:', error);
+      throw error;
+    }
   }
 
   private setupSocketListeners() {
     if (!this.socket) return;
 
-    this.socket.on('connect', () => {
-      console.log('Connected to admin socket');
-    });
-
     this.socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        this.socket?.close();
+      }
+      this.reconnectAttempts++;
+    });
+
+    this.socket.on('connect', () => {
+      console.log('Socket connected successfully');
+      this.reconnectAttempts = 0;
     });
 
     this.socket.on('log_update', (data) => {
@@ -61,11 +107,10 @@ class AdminService {
   }
 
   private async getAuthHeaders() {
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) throw new Error('No auth token available');
+    const token = await this.getValidToken();
     return {
       'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     };
   }
 
@@ -109,22 +154,29 @@ class AdminService {
 
   async getRequestLogs(days: number = 3): Promise<RequestLog[]> {
     try {
+      const token = await this.getValidToken();
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/admin/logs/request?days=${days}`,
         {
-          headers: await this.getAuthHeaders(),
-          credentials: 'include',
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         }
       );
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
+      
       const data = await response.json();
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Error fetching request logs:', error);
-      return [];
+      throw error;
     }
   }
 
