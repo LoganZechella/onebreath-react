@@ -113,3 +113,30 @@ def calculate_statistics(samples, fields):
             stats[field] = None
             
     return stats 
+
+def convert_sample(sample):
+    """Convert sample data to appropriate types and handle special MongoDB types."""
+    from bson.decimal128 import Decimal128
+    from datetime import datetime
+    
+    if isinstance(sample, dict):
+        converted = {}
+        for key, value in sample.items():
+            if isinstance(value, Decimal128):
+                converted[key] = float(value.to_decimal())
+            elif isinstance(value, datetime):
+                converted[key] = value.isoformat()
+            elif isinstance(value, dict):
+                converted[key] = convert_sample(value)
+            elif isinstance(value, list):
+                converted[key] = [convert_sample(item) for item in value]
+            else:
+                converted[key] = value
+        return converted
+    elif isinstance(sample, list):
+        return [convert_sample(item) for item in sample]
+    elif isinstance(sample, Decimal128):
+        return float(sample.to_decimal())
+    elif isinstance(sample, datetime):
+        return value.isoformat()
+    return sample
