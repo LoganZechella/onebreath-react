@@ -701,111 +701,131 @@ def ai_analysis():
 
 Important Context for Sample Classification:
 A breath sample is classified as CANCER POSITIVE if it meets either of these criteria:
-1. Location is exactly "BCC - 3rd Floor Clinic" (Breast Care Center)
+1. Location is exactly "BCC - 3rd Floor Clinic" (Breast Care Center - indicating breast cancer)
    OR
 2. sample_type is exactly "LC Positive" (Lung Cancer Positive)
 
 A breath sample is classified as CANCER NEGATIVE if it meets either of these criteria:
-1. Location is exactly "CT - Radiology" (CT Screening)
+1. Location is exactly "CT - Radiology" (CT Screening - healthy controls)
    OR
 2. sample_type is exactly "LC Negative" (Lung Cancer Negative)
 
-These classification criteria are absolute - use them exactly as specified to determine cancer status. This precise classification is essential for all statistical calculations and group comparisons.
+These classification criteria are absolute - use them exactly as specified to determine cancer status.
 
-When analyzing the data:
-1. First classify each sample using these exact criteria
-2. Report the total number of samples in each group
-3. Use these classifications for all subsequent analyses
-4. Always separate statistics by cancer status
-5. Calculate sensitivity/specificity based on these groupings
+Key Analysis Requirements:
+1. VOC Level Interpretation:
+   - For each VOC, define what constitutes a "significant" elevation
+   - Compare absolute concentrations, not just relative differences
+   - Consider both raw values and per-liter normalized values
+   - Pay special attention to combinations of VOCs that might form meaningful patterns
 
-Analyze the provided dataset with particular attention to distinguishing between cancer-positive and cancer-negative cases. Structure your analysis in clear sections, each prefixed with '###'.
+2. Clinical Relevance:
+   - Focus on VOC patterns that could be clinically actionable
+   - Consider practical implications for screening and diagnosis
+   - Discuss potential for early detection
+   - Address implications for different cancer types (breast vs. lung)
 
-For each section:
-1. Start with a "Key Finding" that emphasizes clinical relevance
-2. Follow with "Statistical Details" using label: value format, including:
-   - Sensitivity and specificity calculations based on the exact classification criteria
-   - Sample counts for each group (cancer-positive and cancer-negative)
-   - Confidence intervals where applicable
-   - Effect sizes (Cohen's d for comparing cancer positive vs negative groups)
-   - Statistical significance (p-values where appropriate)
-3. End with a detailed analysis paragraph incorporating:
-   - Clinical implications
-   - Potential confounding factors
-   - Quality considerations
+3. Statistical Analysis:
+   - Use appropriate statistical tests for small sample sizes
+   - Report effect sizes with confidence intervals
+   - Consider non-parametric tests when appropriate
+   - Clearly state limitations of small sample size analysis
 
-Required Sections:
+4. Quality Control:
+   - CO2 levels should be between 2 percent and 5 percent for reliable samples
+   - Flag any samples outside this range
+   - Consider impact of collection time and conditions
+   - Assess measurement reliability
+
+Structure your analysis in these sections:
+
 ### Diagnostic Performance
-- Begin with total counts of cancer-positive and cancer-negative samples
-- Calculate sensitivity/specificity using the exact classification criteria
-- Analyze separation between cancer-positive and cancer-negative cases
-- Propose preliminary cutoff values for key VOCs
-- Include sample counts for both positive and negative groups
+- Begin with clear sample counts by cancer type (breast vs. lung) and status
+- Calculate sensitivity/specificity for each cancer type separately
+- Analyze VOC patterns specific to each cancer type
+- Propose clinically relevant cutoff values with rationale
 
 ### VOC Pattern Analysis
-- Compare VOC distributions between precisely classified groups
-- Analyze individual and combined VOC patterns
-- Identify potential biomarker signatures
-- Account for measurement reliability
+- Analyze each VOC's distribution in detail
+- Report both absolute values and normalized (per liter) concentrations
+- Identify VOC combinations that might be more reliable than individual markers
+- Compare patterns between cancer types
+- Consider ratio-based analysis between different VOCs
 
-### Demographic Impact Analysis
-- Examine influence of smoking history, age, etc.
-- Control for confounding variables
-- Stratify analysis where sample size permits
+### Clinical Implications
+- Discuss practical screening potential
+- Address different implications for breast vs. lung cancer
+- Consider cost-effectiveness of measuring specific VOCs
+- Suggest optimal combinations for clinical use
 
-### Quality Metrics
-- Assess sample collection quality (CO2 levels)
-- Evaluate measurement reliability
-- Flag potential data quality issues
+### Quality Assessment
+- Evaluate sample quality using CO2 criteria (2-5 percent range)
+- Assess impact of collection conditions
+- Identify any systematic measurement issues
+- Recommend quality control improvements
 
-### Environmental and Behavioral Factors
-- Analyze impact of recent meals, smoking, etc.
-- Consider time-based variations
-- Account for location differences
+### Confounding Factors
+- Analyze impact of:
+  * Smoking history (pack years)
+  * Time since last meal
+  * Time since last cigarette
+  * Age and gender if available
+  * Collection time and conditions
+
+For each section:
+1. Start with a clear, clinically relevant key finding
+2. Provide detailed statistical evidence
+3. Include practical implications
+4. Address limitations
+5. Suggest next steps
 
 Use precise numerical values and include:
-- Confidence intervals (95% CI)
-- Effect sizes (Cohen's d, odds ratios)
-- Statistical significance levels
-- Sample size for each group
-- Clear distinction between cancer-positive and negative groups in all analyses
+- Separate analyses for breast and lung cancer
+- Both raw and normalized VOC values
+- Clear rationale for proposed cutoffs
+- Quality indicators for each finding"""
 
-Flag any findings that could be clinically significant, even if not yet statistically significant due to sample size."""
+        user_prompt = f"""Analyze this dataset of {len(filtered_samples)} breath samples, focusing on clinical utility and cancer-specific patterns:
 
-        user_prompt = f"""Analyze this dataset of {len(filtered_samples)} breath samples with the following priorities:
+1. Sample Classification and Initial Analysis:
+   * First classify samples by cancer type and status:
+     - Breast Cancer (BCC location)
+     - Lung Cancer (LC Positive)
+     - Healthy Controls (CT location or LC Negative)
+   * Report separate counts for each group
+   * Note any quality issues (CO2 outside 2-5%)
 
-1. Primary Analysis:
-   - First, classify each sample based on these exact criteria:
-     * CANCER POSITIVE if:
-       - Location = "BCC - 3rd Floor Clinic" (Breast Care Center) OR
-       - sample_type = "LC Positive" (Lung Cancer Positive)
-     * CANCER NEGATIVE if:
-       - Location = "CT - Radiology" (CT Screening) OR
-       - sample_type = "LC Negative" (Lung Cancer Negative)
-   - Report total counts for each group
-   - Calculate diagnostic performance metrics (sensitivity, specificity)
-   - Analyze the relationship between key VOCs: {', '.join(voc_fields)}
-   - Compare VOC levels between cancer-positive and negative groups
-   - Consider combined VOC signatures
-   - Account for demographic and behavioral factors
+2. VOC Analysis:
+   * For each VOC ({', '.join(voc_fields)}):
+     - Compare levels across cancer types
+     - Analyze both raw and per-liter values
+     - Consider combinations and ratios
+     - Identify cancer-specific patterns
 
-2. Quality Assessment:
-   - Evaluate sample quality using CO2 levels
-   - Flag any measurement anomalies
-   - Consider impact of error codes on data reliability
-   - Assess temporal stability of measurements
+3. Clinical Utility Assessment:
+   * Evaluate screening potential
+   * Suggest optimal VOC combinations
+   * Consider practical implementation
+   * Address cost-effectiveness
 
-3. Confounding Factors:
-   - Analyze impact of smoking history
-   - Consider recent meals/beverages
-   - Account for dental health status
-   - Evaluate location-based variations
+4. Quality and Reliability:
+   * Assess sample quality (CO2 levels)
+   * Evaluate collection conditions
+   * Consider temporal factors
+   * Flag any reliability issues
+
+5. Confounding Factors:
+   * Analyze smoking impact
+   * Consider dietary effects
+   * Evaluate collection timing
+   * Account for demographics
 
 Format your response in clear sections that can be parsed into a structured display.
-Highlight findings that could be clinically relevant.
-Consider both individual VOCs and potential combined biomarker signatures.
-Always provide separate statistics for cancer-positive and cancer-negative groups.
-Begin your analysis by stating the total number of samples in each group based on the classification criteria."""
+Focus on clinically actionable findings.
+Consider both individual VOCs and combined patterns.
+Separate analyses by cancer type where possible.
+Begin with total counts for each cancer type and status.
+Always provide confidence intervals for key metrics."""
 
         try:
             # Initialize OpenAI client
