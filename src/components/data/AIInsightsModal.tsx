@@ -1,15 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { sampleService } from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  BarChart, Bar,
-  LineChart, Line,
-  PieChart, Pie,
-  XAxis, YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -25,7 +16,6 @@ interface Stat {
     trends?: { label: string; value: string | number }[];
     implications?: string[];
     relatedMetrics?: { label: string; value: string | number }[];
-    visualizationType?: 'bar' | 'pie' | 'line';
   };
 }
 
@@ -46,180 +36,6 @@ interface ExpandedStat {
   sectionTitle: string;
   stat: Stat;
 }
-
-// Add styles directly to the component
-const LoadingSpinner = () => (
-  <div className="h-[200px] flex items-center justify-center">
-    <div className="relative">
-      <div className="w-12 h-12 border-4 border-primary/20 rounded-full">
-        <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary rounded-full animate-spin" />
-      </div>
-      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-        Preparing visualization...
-      </div>
-    </div>
-  </div>
-);
-
-const StatVisualization = ({ type, data }: { 
-  type: 'bar' | 'pie' | 'line';
-  data: any[];
-}) => {
-  const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [data]);
-
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  switch (type) {
-    case 'bar':
-      // Transform breakdown data for bar chart
-      const barData = data.map(item => ({
-        name: item.label,
-        value: parseFloat(item.value)
-      })).filter(item => !isNaN(item.value));
-
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-full h-[200px]"
-        >
-          <ResponsiveContainer>
-            <BarChart data={barData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-              />
-              <Bar dataKey="value" fill="#0088FE">
-                {barData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]}>
-                    <animate
-                      attributeName="height"
-                      from="0"
-                      to={barData[index].value}
-                      dur="0.5s"
-                      fill="freeze"
-                    />
-                  </Cell>
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
-      );
-
-    case 'pie':
-      // Transform breakdown data for pie chart
-      const pieData = data.map(item => ({
-        name: item.label,
-        value: typeof item.value === 'string' ? 
-          parseFloat(item.value.replace('%', '')) : 
-          parseFloat(item.value)
-      })).filter(item => !isNaN(item.value));
-
-      return (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="w-full h-[200px]"
-        >
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                label
-                animationBegin={0}
-                animationDuration={800}
-                animationEasing="ease-out"
-              >
-                {pieData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </motion.div>
-      );
-
-    case 'line':
-      // Transform trends data for line chart
-      const lineData = data.map(item => ({
-        name: item.label,
-        value: typeof item.value === 'string' ? 
-          parseFloat(item.value.replace('%', '')) : 
-          parseFloat(item.value)
-      })).filter(item => !isNaN(item.value));
-
-      return (
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-full h-[200px]"
-        >
-          <ResponsiveContainer>
-            <LineChart data={lineData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="value" 
-                stroke="#0088FE"
-                strokeWidth={2}
-                dot={{ strokeWidth: 2 }}
-                activeDot={{ r: 6, strokeWidth: 2 }}
-                animationBegin={0}
-                animationDuration={800}
-                animationEasing="ease-out"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-      );
-
-    default:
-      return null;
-  }
-};
 
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
@@ -371,48 +187,37 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6"
       >
+        {/* Header Section */}
         <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="flex-1">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
               {stat.label}
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {details.description || 'Detailed analysis of this metric'}
+            <p className="text-lg text-primary dark:text-primary-light font-semibold mt-2">
+              {stat.value}
             </p>
-          </div>
-          <div className="text-2xl font-bold text-primary dark:text-primary-light">
-            {stat.value}
+            <p className="text-gray-600 dark:text-gray-400 mt-4">
+              {details.description}
+            </p>
           </div>
         </div>
 
-        {/* Visualization */}
-        {details.visualizationType && details.breakdown && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              Visualization
-            </h4>
-            <StatVisualization 
-              type={details.visualizationType} 
-              data={details.breakdown}
-            />
-          </div>
-        )}
-
+        {/* Chemical Identity & Detection Method */}
         {details.breakdown && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              Breakdown
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Compound Information
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {details.breakdown.map((item, index) => (
                 <div
                   key={index}
-                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
                 >
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {item.label}
                   </div>
-                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                  <div className="mt-1 text-base text-gray-900 dark:text-white">
                     {item.value}
                   </div>
                 </div>
@@ -421,37 +226,43 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
           </div>
         )}
 
+        {/* Trends & Patterns */}
         {details.trends && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
               Trends & Patterns
             </h4>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {details.trends.map((trend, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2"
+                  className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
                 >
-                  <span className="text-gray-600 dark:text-gray-400">{trend.label}</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{trend.value}</span>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    {trend.label}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {trend.value}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {details.implications && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+        {/* Clinical Implications */}
+        {details.implications && details.implications.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
               Clinical Implications
             </h4>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {details.implications.map((implication, index) => (
                 <li
                   key={index}
                   className="flex items-start"
                 >
-                  <span className="text-primary dark:text-primary-light mr-2">•</span>
+                  <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-primary dark:bg-primary-light mt-2 mr-3" />
                   <span className="text-gray-700 dark:text-gray-300">{implication}</span>
                 </li>
               ))}
@@ -459,21 +270,22 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
           </div>
         )}
 
+        {/* Related Metrics */}
         {details.relatedMetrics && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
               Related Metrics
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               {details.relatedMetrics.map((metric, index) => (
                 <div
                   key={index}
-                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
                 >
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
                     {metric.label}
                   </div>
-                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
                     {metric.value}
                   </div>
                 </div>
@@ -587,13 +399,12 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                   className="flex flex-col items-center justify-center py-12 space-y-4"
                 >
                   <div className="relative">
-                    <div className="w-16 h-16 border-4 border-primary/20 rounded-full animate-spin">
-                      <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary rounded-full animate-spin-fast" 
-                           style={{ animationDirection: 'reverse' }}></div>
+                    <div className="w-12 h-12 border-4 border-primary/20 rounded-full">
+                      <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary rounded-full animate-spin" />
                     </div>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {retryCount > 0 ? `Retry attempt ${retryCount}/3...` : 'Generating clinical analysis...'}
+                    {retryCount > 0 ? `Retry attempt ${retryCount}/3...` : 'Analyzing data...'}
                   </p>
                 </motion.div>
               ) : error ? (
