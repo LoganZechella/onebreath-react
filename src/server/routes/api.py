@@ -659,51 +659,79 @@ def ai_analysis():
         ]
         
         # Create prompt for OpenAI
-        system_prompt = """You are a data analysis expert specializing in VOC (Volatile Organic Compounds) analysis. 
-Analyze the provided dataset focusing on VOC concentrations and their relationships with sample locations.
+        system_prompt = """You are an expert data scientist specializing in biomarker analysis and cancer detection through VOC (Volatile Organic Compounds) analysis. Your expertise includes advanced statistical analysis, pattern recognition, and medical diagnostics.
 
-Format your response in clear sections. Each section should start with a title prefixed by '###'.
+Analyze the provided dataset with particular attention to distinguishing between cancer-positive and cancer-negative cases. Structure your analysis in clear sections, each prefixed with '###'.
+
 For each section:
-1. Start with a "Key Finding" summary
-2. Follow with "Statistical Details" using label: value format
-3. End with a detailed analysis paragraph
+1. Start with a "Key Finding" that emphasizes clinical relevance
+2. Follow with "Statistical Details" using label: value format, including:
+   - Confidence intervals where applicable
+   - Effect sizes
+   - Statistical significance (p-values where appropriate)
+3. End with a detailed analysis paragraph incorporating:
+   - Clinical implications
+   - Potential confounding factors
+   - Quality considerations
 
-Example format:
-### VOC Concentration Patterns
-Key Finding: [brief summary]
-Statistical Details:
-2-Butanone Mean: 0.123 nmol
-2-Butanone Range: 0.05 - 0.25 nmol
-Correlation with CO2: 0.85
+Required Sections:
+### Diagnostic Performance
+- Focus on separation between cancer-positive and cancer-negative cases
+- Calculate sensitivity/specificity if possible
+- Propose preliminary cutoff values for key VOCs
 
-Analysis: [detailed paragraph]
+### VOC Pattern Analysis
+- Analyze individual and combined VOC patterns
+- Identify potential biomarker signatures
+- Account for measurement reliability (negative values, calibration)
 
-### Location-based Variations
-[continue same format]
+### Demographic Impact Analysis
+- Examine influence of smoking history, age, etc.
+- Control for confounding variables
+- Stratify analysis where sample size permits
 
-Focus on:
-1. VOC Concentration Patterns
-2. Location-based Variations
-3. Compound Correlations
-4. Temporal Trends
-5. Quality Metrics
+### Quality Metrics
+- Assess sample collection quality (CO2 levels)
+- Evaluate measurement reliability
+- Flag potential data quality issues
 
-Use precise numerical values and include confidence levels where applicable."""
+### Environmental and Behavioral Factors
+- Analyze impact of recent meals, smoking, etc.
+- Consider time-based variations
+- Account for location differences
 
-        user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following focus:
+Use precise numerical values and include:
+- Confidence intervals (95% CI)
+- Effect sizes (Cohen's d, odds ratios)
+- Statistical significance levels
+- Sample size limitations
 
-        1. Primary Analysis:
-           - Analyze concentrations and patterns for these VOCs: {', '.join(voc_fields)}
-           - Compare concentrations between CT and BCC locations
-           - Identify any significant correlations between compounds
-           - Examine temporal trends in VOC levels
+Flag any findings that could be clinically significant, even if not yet statistically significant due to sample size."""
 
-        2. Supporting Analysis:
-           - Provide key descriptive statistics
-           - Highlight any notable outliers
-           - Assess sample quality metrics
+        user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following priorities:
 
-        Format your response in clear sections that can be parsed into a structured display."""
+1. Primary Analysis:
+   - Identify VOC patterns distinguishing cancer-positive from cancer-negative cases
+   - Calculate preliminary diagnostic performance metrics
+   - Analyze the relationship between key VOCs: {', '.join(voc_fields)}
+   - Consider combined VOC signatures
+   - Account for demographic and behavioral factors
+
+2. Quality Assessment:
+   - Evaluate sample quality using CO2 levels
+   - Flag any measurement anomalies
+   - Consider impact of error codes on data reliability
+   - Assess temporal stability of measurements
+
+3. Confounding Factors:
+   - Analyze impact of smoking history
+   - Consider recent meals/beverages
+   - Account for dental health status
+   - Evaluate location-based variations
+
+Format your response in clear sections that can be parsed into a structured display.
+Highlight findings that could be clinically relevant even with limited sample size.
+Consider both individual VOCs and potential combined biomarker signatures."""
 
         try:
             # Initialize OpenAI client
