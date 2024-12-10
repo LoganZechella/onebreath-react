@@ -741,3 +741,95 @@ Provide responses that are:
             'success': False,
             'error': str(e)
         }), 500
+
+@api.route('/ai/stat_details', methods=['POST'])
+@require_auth
+def get_stat_details():
+    try:
+        data = request.json
+        section = data.get('section')
+        stat = data.get('stat')
+        
+        if not section or not stat:
+            return jsonify({
+                'success': False,
+                'error': 'Section and stat are required'
+            }), 400
+
+        # Construct a detailed prompt for the specific statistic
+        prompt = f"""You are analyzing a specific statistical detail from a lung cancer VOC analysis.
+Please provide detailed information about the following statistic:
+
+Section: {section}
+Statistic: {stat}
+
+Please provide a comprehensive analysis that includes:
+
+1. A clear description of what this statistic means
+2. A detailed breakdown of the components
+3. Any relevant trends or patterns
+4. Clinical implications
+5. Related metrics that provide context
+
+Format the response as a JSON object with these fields:
+{{
+    "description": "A clear explanation of the statistic",
+    "breakdown": [
+        {{"label": "Component 1", "value": "Value 1"}},
+        {{"label": "Component 2", "value": "Value 2"}}
+    ],
+    "trends": [
+        {{"label": "Trend 1", "value": "Description 1"}},
+        {{"label": "Trend 2", "value": "Description 2"}}
+    ],
+    "implications": [
+        "Clinical implication 1",
+        "Clinical implication 2"
+    ],
+    "relatedMetrics": [
+        {{"label": "Related Metric 1", "value": "Value 1"}},
+        {{"label": "Related Metric 2", "value": "Value 2"}}
+    ]
+}}
+
+Focus on providing specific, evidence-based information that helps understand the significance of this statistic for lung cancer detection."""
+
+        # Get response from OpenAI
+        response = openai_client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert in medical statistics and lung cancer detection.
+Provide detailed, evidence-based analysis of statistical metrics.
+Format all responses as valid JSON objects."""
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.3,  # Lower temperature for more consistent JSON
+            response_format={ "type": "json_object" }  # Ensure JSON response
+        )
+
+        # Parse the JSON response
+        details = json.loads(response.choices[0].message.content)
+        
+        return jsonify({
+            'success': True,
+            'details': details
+        })
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error in stat details: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to parse AI response'
+        }), 500
+    except Exception as e:
+        logger.error(f"Error in stat details endpoint: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

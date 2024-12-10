@@ -10,6 +10,14 @@ interface AIInsightsModalProps {
 interface Stat {
   label: string;
   value: string;
+  details?: {
+    description?: string;
+    breakdown?: { label: string; value: string | number }[];
+    trends?: { label: string; value: string | number }[];
+    implications?: string[];
+    relatedMetrics?: { label: string; value: string | number }[];
+    visualizationType?: 'bar' | 'pie' | 'line';
+  };
 }
 
 interface AnalysisSection {
@@ -25,12 +33,18 @@ interface ExpandedSection {
   chatHistory: { role: 'user' | 'assistant'; content: string }[];
 }
 
+interface ExpandedStat {
+  sectionTitle: string;
+  stat: Stat;
+}
+
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [sections, setSections] = useState<AnalysisSection[]>([]);
   const [expandedSection, setExpandedSection] = useState<ExpandedSection | null>(null);
+  const [expandedStat, setExpandedStat] = useState<ExpandedStat | null>(null);
   const [userQuestion, setUserQuestion] = useState('');
 
   const fetchInsights = async (retry = 0) => {
@@ -131,6 +145,148 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         content: `Let's explore the key finding: ${section.keyFinding}\n\nI can help you understand the details and implications of this finding. What would you like to know more about?`
       }]
     });
+    setExpandedStat(null);
+  };
+
+  const handleStatClick = async (sectionTitle: string, stat: Stat) => {
+    setExpandedSection(null);
+    setExpandedStat({ sectionTitle, stat });
+
+    if (!stat.details) {
+      try {
+        const response = await sampleService.getStatDetails(sectionTitle, stat.label);
+        if (response.success && response.details) {
+          const updatedSections = sections.map(section => {
+            if (section.title === sectionTitle) {
+              const updatedStats = section.stats.map(s => {
+                if (s.label === stat.label) {
+                  return { ...s, details: response.details };
+                }
+                return s;
+              });
+              return { ...section, stats: updatedStats };
+            }
+            return section;
+          });
+          setSections(updatedSections);
+        }
+      } catch (error) {
+        console.error('Error fetching stat details:', error);
+      }
+    }
+  };
+
+  const renderExpandedStat = () => {
+    if (!expandedStat?.stat) return null;
+
+    const { stat } = expandedStat;
+    const details = stat.details || {};
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {stat.label}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {details.description || 'Detailed analysis of this metric'}
+            </p>
+          </div>
+          <div className="text-2xl font-bold text-primary dark:text-primary-light">
+            {stat.value}
+          </div>
+        </div>
+
+        {details.breakdown && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Breakdown
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              {details.breakdown.map((item, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
+                >
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {item.label}
+                  </div>
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {details.trends && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Trends & Patterns
+            </h4>
+            <div className="space-y-3">
+              {details.trends.map((trend, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2"
+                >
+                  <span className="text-gray-600 dark:text-gray-400">{trend.label}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{trend.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {details.implications && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Clinical Implications
+            </h4>
+            <ul className="space-y-2">
+              {details.implications.map((implication, index) => (
+                <li
+                  key={index}
+                  className="flex items-start"
+                >
+                  <span className="text-primary dark:text-primary-light mr-2">•</span>
+                  <span className="text-gray-700 dark:text-gray-300">{implication}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {details.relatedMetrics && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Related Metrics
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              {details.relatedMetrics.map((metric, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
+                >
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {metric.label}
+                  </div>
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                    {metric.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
   };
 
   const handleQuestionSubmit = async (e: React.FormEvent) => {
@@ -184,16 +340,23 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
             <div>
               <h2 className="text-3xl font-bold bg-clip-text text-transparent 
                            bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
-                {expandedSection ? expandedSection.section.title : 'Clinical VOC Analysis'}
+                {expandedSection ? expandedSection.section.title : 
+                 expandedStat ? `${expandedStat.sectionTitle} - Details` : 
+                 'Clinical VOC Analysis'}
               </h2>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {expandedSection ? 'Detailed Analysis View' : 'Advanced biomarker analysis for cancer detection'}
+                {expandedSection ? 'Detailed Analysis View' : 
+                 expandedStat ? expandedStat.stat.label :
+                 'Advanced biomarker analysis for cancer detection'}
               </p>
             </div>
             <div className="flex gap-2">
-              {expandedSection && (
+              {(expandedSection || expandedStat) && (
                 <button
-                  onClick={() => setExpandedSection(null)}
+                  onClick={() => {
+                    setExpandedSection(null);
+                    setExpandedStat(null);
+                  }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
                            dark:hover:text-gray-200 transition-colors p-2 rounded-lg
                            hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -312,6 +475,8 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                         </div>
                       </form>
                     </div>
+                  ) : expandedStat ? (
+                    renderExpandedStat()
                   ) : (
                     sections.map((section, index) => (
                       <motion.div
@@ -319,8 +484,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="analysis-section cursor-pointer group"
-                        onClick={() => handleSectionClick(section)}
+                        className="analysis-section"
                       >
                         {/* Section Header */}
                         <div className="mb-6">
@@ -332,10 +496,13 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                         </div>
 
                         {/* Key Finding */}
-                        <div className="mb-6 transform transition-all duration-200 group-hover:scale-[1.02]">
+                        <div 
+                          className="mb-6 transform transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+                          onClick={() => handleSectionClick(section)}
+                        >
                           <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-6
-                                      border-l-4 border-primary shadow-sm group-hover:shadow-md
-                                      group-hover:border-l-8 transition-all duration-200">
+                                      border-l-4 border-primary shadow-sm hover:shadow-md
+                                      hover:border-l-8 transition-all duration-200">
                             <h4 className="text-sm uppercase tracking-wider text-primary dark:text-primary-light 
                                        font-semibold mb-2 flex items-center justify-between">
                               Key Finding
@@ -353,7 +520,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
 
                         {/* Statistical Details */}
                         {section.stats && section.stats.length > 0 && (
-                          <div className="mb-6 opacity-90 group-hover:opacity-100 transition-opacity">
+                          <div className="mb-6">
                             <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
                                        font-semibold mb-4">
                               Statistical Details
@@ -367,7 +534,10 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                                   transition={{ delay: statIdx * 0.05 }}
                                   className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm
                                          border border-gray-200 dark:border-gray-700
-                                         group-hover:shadow-md transition-shadow duration-200"
+                                         hover:shadow-md transition-all duration-200 cursor-pointer
+                                         hover:border-primary dark:hover:border-primary-light
+                                         transform hover:-translate-y-0.5"
+                                  onClick={() => handleStatClick(section.title, stat)}
                                 >
                                   <div className="flex justify-between items-start">
                                     <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
@@ -378,6 +548,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                                       {stat.value}
                                     </span>
                                   </div>
+                                  <div className="mt-2 text-xs text-primary/70 dark:text-primary-light/70">
+                                    Click for detailed analysis
+                                  </div>
                                 </motion.div>
                               ))}
                             </div>
@@ -386,8 +559,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
 
                         {/* Analysis */}
                         {section.analysis && (
-                          <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6
-                                      opacity-90 group-hover:opacity-100 transition-opacity">
+                          <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
                             <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
                                        font-semibold mb-3">
                               Analysis

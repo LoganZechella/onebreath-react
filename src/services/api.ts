@@ -62,6 +62,21 @@ interface AIResponse {
   error?: string;
 }
 
+interface StatDetails {
+  description?: string;
+  breakdown?: { label: string; value: string | number }[];
+  trends?: { label: string; value: string | number }[];
+  implications?: string[];
+  relatedMetrics?: { label: string; value: string | number }[];
+  visualizationType?: 'bar' | 'pie' | 'line';
+}
+
+interface StatDetailsResponse {
+  success: boolean;
+  details?: StatDetails;
+  error?: string;
+}
+
 export const sampleService = {
   getSamples: async (): Promise<Sample[]> => {
     try {
@@ -190,6 +205,26 @@ export const sampleService = {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get AI response'
+      };
+    }
+  },
+
+  async getStatDetails(sectionTitle: string, statLabel: string): Promise<StatDetailsResponse> {
+    try {
+      const response = await api.post('/ai/stat_details', {
+        section: sectionTitle,
+        stat: statLabel
+      });
+
+      return {
+        success: true,
+        details: response.data.details
+      };
+    } catch (error) {
+      console.error('Error in getStatDetails:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get stat details'
       };
     }
   },
