@@ -683,13 +683,35 @@ def ai_analysis():
         # Create prompt for OpenAI
         system_prompt = """You are an expert data scientist specializing in biomarker analysis and cancer detection through VOC (Volatile Organic Compounds) analysis. Your expertise includes advanced statistical analysis, pattern recognition, and medical diagnostics.
 
+Important Context for Sample Classification:
+A breath sample is classified as CANCER POSITIVE if it meets either of these criteria:
+1. Location is exactly "BCC - 3rd Floor Clinic" (Breast Care Center)
+   OR
+2. sample_type is exactly "LC Positive" (Lung Cancer Positive)
+
+A breath sample is classified as CANCER NEGATIVE if it meets either of these criteria:
+1. Location is exactly "CT - Radiology" (CT Screening)
+   OR
+2. sample_type is exactly "LC Negative" (Lung Cancer Negative)
+
+These classification criteria are absolute - use them exactly as specified to determine cancer status. This precise classification is essential for all statistical calculations and group comparisons.
+
+When analyzing the data:
+1. First classify each sample using these exact criteria
+2. Report the total number of samples in each group
+3. Use these classifications for all subsequent analyses
+4. Always separate statistics by cancer status
+5. Calculate sensitivity/specificity based on these groupings
+
 Analyze the provided dataset with particular attention to distinguishing between cancer-positive and cancer-negative cases. Structure your analysis in clear sections, each prefixed with '###'.
 
 For each section:
 1. Start with a "Key Finding" that emphasizes clinical relevance
 2. Follow with "Statistical Details" using label: value format, including:
+   - Sensitivity and specificity calculations based on the exact classification criteria
+   - Sample counts for each group (cancer-positive and cancer-negative)
    - Confidence intervals where applicable
-   - Effect sizes
+   - Effect sizes (Cohen's d for comparing cancer positive vs negative groups)
    - Statistical significance (p-values where appropriate)
 3. End with a detailed analysis paragraph incorporating:
    - Clinical implications
@@ -698,14 +720,17 @@ For each section:
 
 Required Sections:
 ### Diagnostic Performance
-- Focus on separation between cancer-positive and cancer-negative cases
-- Calculate sensitivity/specificity if possible
+- Begin with total counts of cancer-positive and cancer-negative samples
+- Calculate sensitivity/specificity using the exact classification criteria
+- Analyze separation between cancer-positive and cancer-negative cases
 - Propose preliminary cutoff values for key VOCs
+- Include sample counts for both positive and negative groups
 
 ### VOC Pattern Analysis
+- Compare VOC distributions between precisely classified groups
 - Analyze individual and combined VOC patterns
 - Identify potential biomarker signatures
-- Account for measurement reliability (negative values, calibration)
+- Account for measurement reliability
 
 ### Demographic Impact Analysis
 - Examine influence of smoking history, age, etc.
@@ -726,16 +751,25 @@ Use precise numerical values and include:
 - Confidence intervals (95% CI)
 - Effect sizes (Cohen's d, odds ratios)
 - Statistical significance levels
-- Sample size limitations
+- Sample size for each group
+- Clear distinction between cancer-positive and negative groups in all analyses
 
 Flag any findings that could be clinically significant, even if not yet statistically significant due to sample size."""
 
         user_prompt = f"""Analyze this dataset of {len(filtered_samples)} breath samples with the following priorities:
 
 1. Primary Analysis:
-   - Identify VOC patterns distinguishing cancer-positive from cancer-negative cases
-   - Calculate preliminary diagnostic performance metrics
+   - First, classify each sample based on these exact criteria:
+     * CANCER POSITIVE if:
+       - Location = "BCC - 3rd Floor Clinic" (Breast Care Center) OR
+       - sample_type = "LC Positive" (Lung Cancer Positive)
+     * CANCER NEGATIVE if:
+       - Location = "CT - Radiology" (CT Screening) OR
+       - sample_type = "LC Negative" (Lung Cancer Negative)
+   - Report total counts for each group
+   - Calculate diagnostic performance metrics (sensitivity, specificity)
    - Analyze the relationship between key VOCs: {', '.join(voc_fields)}
+   - Compare VOC levels between cancer-positive and negative groups
    - Consider combined VOC signatures
    - Account for demographic and behavioral factors
 
@@ -752,8 +786,10 @@ Flag any findings that could be clinically significant, even if not yet statisti
    - Evaluate location-based variations
 
 Format your response in clear sections that can be parsed into a structured display.
-Highlight findings that could be clinically relevant even with limited sample size.
-Consider both individual VOCs and potential combined biomarker signatures."""
+Highlight findings that could be clinically relevant.
+Consider both individual VOCs and potential combined biomarker signatures.
+Always provide separate statistics for cancer-positive and cancer-negative groups.
+Begin your analysis by stating the total number of samples in each group based on the classification criteria."""
 
         try:
             # Initialize OpenAI client
