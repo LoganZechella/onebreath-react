@@ -10,17 +10,14 @@ interface AIInsightsModalProps {
 interface Stat {
   label: string;
   value: string;
-  confidence?: string;
-  significance?: string;
-  effectSize?: string;
 }
 
 interface AnalysisSection {
   title: string;
-  keyFinding?: string;
+  keyFinding: string;
   content: string[];
   stats?: Stat[];
-  clinicallySignificant?: boolean;
+  analysis?: string;
 }
 
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
@@ -56,77 +53,49 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   const parseInsights = (text: string) => {
     const sections = text.split('\n\n').filter(Boolean).map(section => {
       const lines = section.split('\n');
-      
       let title = lines[0].replace(/^###\s*/, '').replace(/^#+\s*/, '').trim();
       let keyFinding = '';
-      let clinicallySignificant = false;
+      let stats: Stat[] = [];
+      let analysis = '';
+      let content: string[] = [];
       
-      const content = lines.slice(1)
-        .filter(line => line.trim())
-        .map(line => {
-          const trimmedLine = line
-            .replace(/^\s*[*-]\s+/, '')  // Remove list markers
-            .replace(/^#+\s*/, '')       // Remove any header markers
-            .trim();
-
-          // Extract key finding
-          if (trimmedLine.startsWith('Key Finding:')) {
-            keyFinding = trimmedLine.replace('Key Finding:', '').trim();
-            return '';
-          }
-
-          // Check for clinical significance
-          if (trimmedLine.toLowerCase().includes('clinically significant')) {
-            clinicallySignificant = true;
-          }
-
-          return trimmedLine;
-        })
-        .filter(Boolean); // Remove empty strings
-
-      const stats: Stat[] = [];
-      let currentCompound = '';
-      let currentStat: Partial<Stat> = {};
+      let currentSection = '';
       
-      content.forEach(line => {
-        if (line.endsWith(':')) {
-          currentCompound = line.slice(0, -1).trim();
-        } else if (line.includes(':')) {
-          const [label, value] = line.split(':').map(s => s.trim());
+      lines.slice(1).forEach(line => {
+        const trimmedLine = line.trim();
+        
+        if (trimmedLine.startsWith('**Key Finding:**')) {
+          keyFinding = trimmedLine.replace('**Key Finding:**', '').trim();
+        } else if (trimmedLine.startsWith('**Statistical Details:**')) {
+          currentSection = 'stats';
+        } else if (trimmedLine.startsWith('**Analysis:**')) {
+          currentSection = 'analysis';
+        } else if (trimmedLine && currentSection === 'stats' && trimmedLine.startsWith('-')) {
+          const statLine = trimmedLine.substring(1).trim();
+          const [label, value] = statLine.split(':').map(s => s.trim());
           if (label && value) {
-            if (label.toLowerCase().includes('ci') || label.toLowerCase().includes('confidence')) {
-              currentStat.confidence = value;
-            } else if (label.toLowerCase().includes('p-value') || label.toLowerCase().includes('significance')) {
-              currentStat.significance = value;
-            } else if (label.toLowerCase().includes('effect') || label.toLowerCase().includes("cohen's")) {
-              currentStat.effectSize = value;
-            } else {
-              if (Object.keys(currentStat).length > 0) {
-                stats.push(currentStat as Stat);
-                currentStat = {};
-              }
-              const fullLabel = currentCompound ? `${currentCompound} - ${label}` : label;
-              currentStat = { label: fullLabel, value };
-            }
+            stats.push({ label, value });
           }
+        } else if (trimmedLine && currentSection === 'analysis') {
+          analysis = trimmedLine;
+        }
+        
+        // Add all non-empty lines to content
+        if (trimmedLine) {
+          content.push(trimmedLine);
         }
       });
 
-      if (Object.keys(currentStat).length > 0) {
-        stats.push(currentStat as Stat);
-      }
-
-      return { 
+      return {
         title,
-        keyFinding: keyFinding || undefined,
-        content: content.filter(line => !line.includes(':')),
+        keyFinding: keyFinding || 'No key finding available',
+        content,
         stats: stats.length > 0 ? stats : undefined,
-        clinicallySignificant
-      };
+        analysis: analysis || undefined
+      } as AnalysisSection;
     });
 
-    setSections(sections.filter(section => section.title && 
-      (section.content.length > 0 || section.keyFinding || (section.stats && section.stats.length > 0))));
+    setSections(sections);
   };
 
   if (!isOpen) return null;
@@ -147,9 +116,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
       >
         <div className="p-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex justify-between items-center mb-8 border-b border-gray-200 dark:border-gray-700 pb-6">
             <div>
-              <h2 className="text-2xl font-bold bg-clip-text text-transparent 
+              <h2 className="text-3xl font-bold bg-clip-text text-transparent 
                            bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
                 Clinical VOC Analysis
               </h2>
@@ -215,7 +184,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="space-y-8"
+                  className="space-y-12"
                 >
                   {sections.map((section, index) => (
                     <motion.div
@@ -223,90 +192,75 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className={`analysis-section mb-8 ${
-                        section.clinicallySignificant ? 'ring-2 ring-primary/20 rounded-xl p-6' : ''
-                      }`}
+                      className="analysis-section"
                     >
-                      <div className="flex items-center gap-3 mb-4">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white
-                                     relative after:absolute after:bottom-0 after:left-0 after:w-full 
-                                     after:h-0.5 after:bg-gradient-to-r after:from-primary/30 after:to-transparent">
+                      {/* Section Header */}
+                      <div className="mb-6">
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white
+                                     relative inline-block">
                           {section.title}
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r 
+                                      from-primary/30 to-transparent rounded-full"></div>
                         </h3>
-                        {section.clinicallySignificant && (
-                          <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary 
-                                         dark:bg-primary/20 dark:text-primary-light rounded-full">
-                            Clinically Significant
-                          </span>
-                        )}
                       </div>
 
-                      {section.keyFinding && (
-                        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg
-                                      border-l-4 border-primary">
-                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      {/* Key Finding */}
+                      <div className="mb-6">
+                        <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-6
+                                    border-l-4 border-primary shadow-sm">
+                          <h4 className="text-sm uppercase tracking-wider text-primary dark:text-primary-light 
+                                     font-semibold mb-2">
                             Key Finding
                           </h4>
-                          <p className="text-gray-900 dark:text-white font-medium">
+                          <p className="text-gray-900 dark:text-white text-lg font-medium leading-relaxed">
                             {section.keyFinding}
                           </p>
                         </div>
-                      )}
-                      
+                      </div>
+
+                      {/* Statistical Details */}
                       {section.stats && section.stats.length > 0 && (
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg
-                                      border border-gray-200 dark:border-gray-700
-                                      hover:shadow-xl transition-shadow duration-300 mb-4">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="mb-6">
+                          <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
+                                     font-semibold mb-4">
+                            Statistical Details
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {section.stats.map((stat, statIdx) => (
                               <motion.div
                                 key={`stat-${statIdx}`}
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: statIdx * 0.05 }}
-                                className="stat-card bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg
-                                         hover:bg-gray-100 dark:hover:bg-gray-700 
-                                         transition-colors duration-200"
+                                className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm
+                                       border border-gray-200 dark:border-gray-700
+                                       hover:shadow-md transition-shadow duration-200"
                               >
-                                <span className="text-sm text-gray-500 dark:text-gray-400 block mb-2">
-                                  {stat.label}
-                                </span>
-                                <span className="text-lg font-semibold text-gray-900 dark:text-white block">
-                                  {stat.value}
-                                </span>
-                                {(stat.confidence || stat.significance || stat.effectSize) && (
-                                  <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600
-                                                grid grid-cols-1 gap-1">
-                                    {stat.confidence && (
-                                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                                        95% CI: {stat.confidence}
-                                      </span>
-                                    )}
-                                    {stat.significance && (
-                                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                                        p-value: {stat.significance}
-                                      </span>
-                                    )}
-                                    {stat.effectSize && (
-                                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                                        Effect Size: {stat.effectSize}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
+                                <div className="flex justify-between items-start">
+                                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                    {stat.label}
+                                  </span>
+                                  <span className="text-base font-semibold text-gray-900 dark:text-white
+                                               bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded">
+                                    {stat.value}
+                                  </span>
+                                </div>
                               </motion.div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      {section.content.length > 0 && (
-                        <div className="text-gray-700 dark:text-gray-300 space-y-3">
-                          {section.content.map((line, lineIdx) => (
-                            <p key={lineIdx} className="leading-relaxed">
-                              {line}
-                            </p>
-                          ))}
+                      {/* Analysis */}
+                      {section.analysis && (
+                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
+                          <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
+                                     font-semibold mb-3">
+                            Analysis
+                          </h4>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {section.analysis}
+                          </p>
                         </div>
                       )}
                     </motion.div>
