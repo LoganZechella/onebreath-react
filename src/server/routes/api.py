@@ -697,13 +697,29 @@ def ai_analysis():
             })
 
         # Create prompt for OpenAI
-        system_prompt = """You are an expert data scientist specializing in biomarker analysis and cancer detection through VOC (Volatile Organic Compounds) analysis. Your expertise includes advanced statistical analysis, pattern recognition, and medical diagnostics.
+        system_prompt = """You are an expert data scientist specializing in lung cancer detection through VOC (Volatile Organic Compounds) analysis of breath samples. Your expertise includes advanced statistical analysis, pattern recognition, and medical diagnostics.
 
-Important: Format your response in sections using exactly this structure for each section:
+Important Context - Lung Cancer Classification:
+This study focuses exclusively on lung cancer detection using breath VOC analysis. Sample classification criteria:
+
+LUNG CANCER POSITIVE samples meet either:
+1. sample_type = "LC Positive" OR
+2. lung_RADS score ≥ 3 (indicating suspicious pulmonary nodules)
+
+LUNG CANCER NEGATIVE samples meet either:
+1. sample_type = "LC Negative" OR
+2. lung_RADS score < 3 (indicating benign findings)
+
+Additional Context:
+- Fields 'cancer_histology' and 'cancer_stage' indicate lung cancer characteristics
+- 'lung_RADS' score follows standard grading for pulmonary nodules
+- Study goal: Early detection of lung cancer through breath VOC analysis
+
+Format your response in sections using exactly this structure:
 
 ### [Section Title]
 
-**Key Finding:** [One sentence summary of key finding]
+**Key Finding:** [One sentence summary focusing on lung cancer detection implications]
 
 **Statistical Details:**
 - [Stat Label]: [Stat Value]
@@ -714,42 +730,48 @@ Important: Format your response in sections using exactly this structure for eac
 
 Required Sections:
 
-### Sample Overview
+### Sample Classification
 - Total samples analyzed
-- Breakdown by cancer type and status
-- Quality metrics summary
+- Breakdown by lung cancer status (positive/negative)
+- lung-RADS distribution
+- Cancer histology and staging summary
 
-### VOC Analysis by Cancer Type
-- Separate analysis for breast and lung cancer
-- Compare with healthy controls
-- Include both raw and per-liter values
+### VOC Profile Analysis
+- Compare positive vs negative cases
+- Raw and per-liter concentrations
+- Statistical significance of differences
+- Effect sizes with confidence intervals
 
-### Pattern Analysis
-- VOC combinations and ratios
-- Cancer-specific signatures
-- Statistical significance
+### Diagnostic Performance
+- Sensitivity and specificity for lung cancer
+- ROC analysis if applicable
+- Optimal cutoff values
+- Comparison with current screening methods
 
-### Quality Assessment
-- CO2 level distribution
-- Sample collection metrics
+### Quality Metrics
+- CO2 level distribution (2-5% range)
+- Sample collection quality
 - Data reliability indicators
+- Error rate analysis
 
-### Clinical Implications
-- Diagnostic potential
-- Screening applications
-- Implementation considerations
+### Clinical Utility
+- Early detection potential
+- Screening application feasibility
+- Integration with current diagnostic workflow
+- Cost-effectiveness analysis
 
-### Confounding Factors
-- Smoking impact analysis
-- Dietary influences
-- Collection conditions
+### Confounding Variables
+- Smoking history impact
+- Recent exposure effects
+- Collection timing influence
+- Other medical conditions
 
 For each section:
-1. Start with a clear key finding
+1. Focus on lung cancer detection implications
 2. Provide detailed statistical evidence
-3. End with thorough analysis
-4. Include confidence intervals where applicable
-5. Highlight clinical relevance
+3. Include clinical relevance
+4. Address limitations
+5. Suggest improvements
 
 Remember:
 - Always format sections with '###'
@@ -759,7 +781,7 @@ Remember:
 - Use bullet points for statistical details
 - Provide comprehensive analysis paragraphs"""
 
-        user_prompt = f"""Analyze this dataset of {len(filtered_samples)} breath samples, focusing on clinical utility and cancer-specific patterns.
+        user_prompt = f"""Analyze this dataset of {len(filtered_samples)} breath samples for lung cancer detection.
 
 Please structure your response exactly as follows:
 
@@ -771,34 +793,42 @@ Please structure your response exactly as follows:
 
 3. Analyze these specific aspects:
    * Sample Classification:
-     - Breast Cancer (BCC location)
-     - Lung Cancer (LC Positive)
-     - Healthy Controls (CT location or LC Negative)
-   * VOC Patterns for each VOC ({', '.join(voc_fields)}):
-     - Raw concentrations
-     - Per-liter values
-     - Group comparisons
-   * Quality Metrics:
+     - Lung cancer positive (LC Positive or lung-RADS ≥ 3)
+     - Lung cancer negative (LC Negative or lung-RADS < 3)
+     - Distribution of lung-RADS scores
+     - Cancer histology and staging when available
+
+   * VOC Analysis for each compound ({', '.join(voc_fields)}):
+     - Concentrations in positive vs negative cases
+     - Raw and per-liter values
+     - Statistical significance
+     - Pattern differences between groups
+
+   * Quality Assessment:
      - CO2 levels (2-5% range)
-     - Collection conditions
-     - Data reliability
+     - Sample collection conditions
+     - Data reliability metrics
 
-4. Clinical Relevance:
-   * Diagnostic potential
-   * Implementation considerations
-   * Cost-effectiveness analysis
+4. Clinical Applications:
+   * Early detection potential
+   * Screening feasibility
+   * Integration with current diagnostics
+   * Cost-benefit analysis
 
-5. Confounding Variables:
-   * Smoking history impact
-   * Dietary influences
-   * Collection timing effects
+5. Confounding Factors:
+   * Smoking history analysis
+   * Recent exposures
+   * Collection timing
+   * Medical comorbidities
 
 Remember to:
 - Use exact section formatting ('###')
-- Include all three components (Key Finding, Statistical Details, Analysis) in each section
-- Provide statistical significance and confidence intervals
-- Separate analyses by cancer type
-- Begin with total sample counts"""
+- Include all three components (Key Finding, Statistical Details, Analysis)
+- Provide confidence intervals for key metrics
+- Focus exclusively on lung cancer detection
+- Begin with complete sample classification
+- Consider lung-RADS scores in analysis
+- Analyze cancer histology and staging when available"""
 
         try:
             # Initialize OpenAI client
