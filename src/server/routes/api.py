@@ -718,7 +718,7 @@ Use precise numerical values and include confidence levels where applicable."""
             while retry_count < max_retries:
                 try:
                     response = openai_client.chat.completions.create(
-                        model="gpt-4o-2024-11-20",
+                        model="gpt-4o",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
