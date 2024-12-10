@@ -56,6 +56,12 @@ interface StatisticsSummaryResponse {
     sampleCount: number;
 }
 
+interface AIResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
 export const sampleService = {
   getSamples: async (): Promise<Sample[]> => {
     try {
@@ -164,6 +170,34 @@ export const sampleService = {
     } catch (error) {
       console.error('Error updating expired samples:', error);
       throw error;
+    }
+  },
+
+  async getAIResponse(question: string, context: any): Promise<AIResponse> {
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question,
+          context
+        }),
+      });
+
+      const data = await response.json();
+      return {
+        success: response.ok,
+        message: data.message,
+        error: data.error
+      };
+    } catch (error) {
+      console.error('Error in getAIResponse:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get AI response'
+      };
     }
   },
 };

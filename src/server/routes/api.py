@@ -886,3 +886,149 @@ Remember to:
             "success": False,
             "error": str(e)
         }), 500
+
+@api.route('/api/ai/chat', methods=['POST'])
+@require_auth
+def ai_chat():
+    try:
+        data = request.json
+        question = data.get('question')
+        context = data.get('context')
+        
+        if not question or not context:
+            return jsonify({
+                'success': False,
+                'error': 'Question and context are required'
+            }), 400
+
+        # Define section-specific guidance based on the context title
+        section_guidance = {
+            "Sample Classification": """Focus on:
+- Interpreting lung-RADS scores and their clinical significance
+- Explaining the distribution of cancer types and stages
+- Discussing the implications of sample types for diagnosis
+- Relating findings to clinical diagnostic criteria""",
+            
+            "VOC Profile Analysis": """Focus on:
+- Explaining the significance of specific VOC concentration differences
+- Interpreting statistical measures (p-values, effect sizes)
+- Discussing the reliability of VOC markers for cancer detection
+- Comparing VOC patterns between positive and negative samples""",
+            
+            "Quality Assessment": """Focus on:
+- Evaluating the reliability of breath sample collection
+- Interpreting CO2 levels and their impact on results
+- Assessing potential sources of error or contamination
+- Discussing quality control measures and their importance""",
+            
+            "Clinical Applications": """Focus on:
+- Translating findings into practical clinical recommendations
+- Comparing VOC analysis with other screening methods
+- Discussing sensitivity and specificity implications
+- Evaluating cost-effectiveness and implementation strategies""",
+            
+            "Confounding Factors": """Focus on:
+- Analyzing the impact of smoking history on results
+- Evaluating the influence of medical comorbidities
+- Discussing strategies to control for confounding variables
+- Recommending ways to improve result accuracy"""
+        }
+
+        # Get section-specific guidance
+        title = context.get('title', '')
+        specific_guidance = section_guidance.get(title, "")
+
+        # Construct a detailed prompt with specific guidance
+        prompt = f"""You are analyzing a lung cancer detection finding using VOC (Volatile Organic Compounds) analysis. 
+Below is the specific context and a question about it. Provide a detailed, evidence-based response.
+
+CONTEXT:
+Title: {context.get('title')}
+Key Finding: {context.get('keyFinding')}
+
+Statistical Details:
+{json.dumps(context.get('stats', []), indent=2)}
+
+Analysis Summary:
+{context.get('analysis')}
+
+SPECIFIC GUIDANCE FOR THIS SECTION:
+{specific_guidance}
+
+QUESTION FROM USER:
+{question}
+
+Please provide a response that:
+1. Directly addresses the question using evidence from the context
+2. References specific numerical data and statistical findings where relevant
+3. Explains the clinical significance for lung cancer detection
+4. Uses precise medical terminology while remaining clear and understandable
+5. Acknowledges any limitations or uncertainties in the data
+6. Provides practical implications for clinical decision-making
+7. Relates the answer to current lung cancer screening best practices
+
+If discussing VOC concentrations:
+- Explain the significance of specific concentration differences
+- Relate concentrations to established reference ranges
+- Discuss the reliability of these markers for cancer detection
+
+If discussing patient data:
+- Reference specific lung-RADS scores and their implications
+- Consider the distribution of cancer types and stages
+- Discuss how the findings relate to patient outcomes
+
+If discussing quality metrics:
+- Evaluate the reliability of the measurements
+- Consider the impact of any quality issues on interpretation
+- Suggest ways to improve data quality if relevant
+
+FORMAT YOUR RESPONSE WITH:
+- Clear topic sentences for each main point
+- Specific data citations from the context
+- Clinical implications clearly stated
+- Any necessary caveats or limitations
+"""
+
+        # Get response from OpenAI with enhanced parameters
+        response = openai_client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert in lung cancer detection and VOC analysis, with deep knowledge of:
+- Lung cancer screening and diagnosis
+- VOC biomarker interpretation
+- Clinical research methodology
+- Medical statistics
+- Quality control in clinical testing
+
+Provide responses that are:
+1. Evidence-based and specific to the context
+2. Clinically relevant and actionable
+3. Clear but technically precise
+4. Properly qualified with appropriate caveats"""
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.4,  # Lower temperature for more focused responses
+            max_tokens=750,   # Increased token limit for more detailed responses
+            presence_penalty=0.1,  # Slight penalty to prevent repetition
+            frequency_penalty=0.1   # Slight penalty to encourage diverse language
+        )
+
+        # Extract and return the response
+        message = response.choices[0].message.content
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+
+    except Exception as e:
+        logger.error(f"Error in AI chat endpoint: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

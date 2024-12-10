@@ -20,11 +20,18 @@ interface AnalysisSection {
   analysis: string;
 }
 
+interface ExpandedSection {
+  section: AnalysisSection;
+  chatHistory: { role: 'user' | 'assistant'; content: string }[];
+}
+
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [sections, setSections] = useState<AnalysisSection[]>([]);
+  const [expandedSection, setExpandedSection] = useState<ExpandedSection | null>(null);
+  const [userQuestion, setUserQuestion] = useState('');
 
   const fetchInsights = async (retry = 0) => {
     setLoading(true);
@@ -116,6 +123,45 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     setSections(parsedSections);
   };
 
+  const handleSectionClick = (section: AnalysisSection) => {
+    setExpandedSection({
+      section,
+      chatHistory: [{
+        role: 'assistant',
+        content: `Let's explore the key finding: ${section.keyFinding}\n\nI can help you understand the details and implications of this finding. What would you like to know more about?`
+      }]
+    });
+  };
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expandedSection || !userQuestion.trim()) return;
+
+    const newHistory = [
+      ...expandedSection.chatHistory,
+      { role: 'user' as const, content: userQuestion },
+      { role: 'assistant' as const, content: 'Analyzing your question...' }
+    ];
+
+    setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+    setUserQuestion('');
+
+    try {
+      const response = await sampleService.getAIResponse(userQuestion, expandedSection.section);
+      if (response.success && response.message) {
+        newHistory[newHistory.length - 1].content = response.message;
+        setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+      } else {
+        newHistory[newHistory.length - 1].content = 'Sorry, I could not generate a response at this time.';
+        setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      newHistory[newHistory.length - 1].content = 'Sorry, I encountered an error while processing your question.';
+      setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -138,22 +184,36 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
             <div>
               <h2 className="text-3xl font-bold bg-clip-text text-transparent 
                            bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
-                Clinical VOC Analysis
+                {expandedSection ? expandedSection.section.title : 'Clinical VOC Analysis'}
               </h2>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Advanced biomarker analysis for cancer detection
+                {expandedSection ? 'Detailed Analysis View' : 'Advanced biomarker analysis for cancer detection'}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
-                       dark:hover:text-gray-200 transition-colors p-2 rounded-lg
-                       hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex gap-2">
+              {expandedSection && (
+                <button
+                  onClick={() => setExpandedSection(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
+                           dark:hover:text-gray-200 transition-colors p-2 rounded-lg
+                           hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
+                         dark:hover:text-gray-200 transition-colors p-2 rounded-lg
+                         hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -204,85 +264,142 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                   exit={{ opacity: 0 }}
                   className="space-y-12"
                 >
-                  {sections.map((section, index) => (
-                    <motion.div
-                      key={`section-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="analysis-section"
-                    >
-                      {/* Section Header */}
-                      <div className="mb-6">
-                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white
-                                     relative inline-block">
-                          {section.title}
-                          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r 
-                                      from-primary/30 to-transparent rounded-full"></div>
-                        </h3>
+                  {expandedSection ? (
+                    <div className="flex flex-col h-[60vh]">
+                      {/* Expanded Section Content */}
+                      <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+                        {expandedSection.chatHistory.map((message, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg p-4 ${
+                                message.role === 'user'
+                                  ? 'bg-primary text-white ml-4'
+                                  : 'bg-gray-100 dark:bg-gray-700 mr-4'
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap">{message.content}</p>
+                            </div>
+                          </motion.div>
+                        ))}
                       </div>
 
-                      {/* Key Finding */}
-                      <div className="mb-6">
-                        <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-6
-                                    border-l-4 border-primary shadow-sm">
-                          <h4 className="text-sm uppercase tracking-wider text-primary dark:text-primary-light 
-                                     font-semibold mb-2">
-                            Key Finding
-                          </h4>
-                          <p className="text-gray-900 dark:text-white text-lg font-medium leading-relaxed">
-                            {section.keyFinding || 'No key finding available'}
-                          </p>
+                      {/* Question Input */}
+                      <form onSubmit={handleQuestionSubmit} className="mt-4">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={userQuestion}
+                            onChange={(e) => setUserQuestion(e.target.value)}
+                            placeholder="Ask a question about this finding..."
+                            className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 
+                                     bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white
+                                     focus:ring-2 focus:ring-primary dark:focus:ring-primary-light
+                                     focus:border-transparent"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!userQuestion.trim()}
+                            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg
+                                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Send
+                          </button>
                         </div>
-                      </div>
-
-                      {/* Statistical Details */}
-                      {section.stats && section.stats.length > 0 && (
+                      </form>
+                    </div>
+                  ) : (
+                    sections.map((section, index) => (
+                      <motion.div
+                        key={`section-${index}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="analysis-section cursor-pointer group"
+                        onClick={() => handleSectionClick(section)}
+                      >
+                        {/* Section Header */}
                         <div className="mb-6">
-                          <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
-                                     font-semibold mb-4">
-                            Statistical Details
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {section.stats.map((stat, statIdx) => (
-                              <motion.div
-                                key={`stat-${statIdx}`}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: statIdx * 0.05 }}
-                                className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm
-                                       border border-gray-200 dark:border-gray-700
-                                       hover:shadow-md transition-shadow duration-200"
-                              >
-                                <div className="flex justify-between items-start">
-                                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                    {stat.label}
-                                  </span>
-                                  <span className="text-base font-semibold text-gray-900 dark:text-white
-                                               bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded">
-                                    {stat.value}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            ))}
+                          <h3 className="text-2xl font-bold text-gray-900 dark:text-white relative inline-block">
+                            {section.title}
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r 
+                                        from-primary/30 to-transparent rounded-full"></div>
+                          </h3>
+                        </div>
+
+                        {/* Key Finding */}
+                        <div className="mb-6 transform transition-all duration-200 group-hover:scale-[1.02]">
+                          <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-6
+                                      border-l-4 border-primary shadow-sm group-hover:shadow-md
+                                      group-hover:border-l-8 transition-all duration-200">
+                            <h4 className="text-sm uppercase tracking-wider text-primary dark:text-primary-light 
+                                       font-semibold mb-2 flex items-center justify-between">
+                              Key Finding
+                              <svg className="w-5 h-5 text-primary/50 group-hover:text-primary transition-colors" 
+                                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                      d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                              </svg>
+                            </h4>
+                            <p className="text-gray-900 dark:text-white text-lg font-medium leading-relaxed">
+                              {section.keyFinding || 'No key finding available'}
+                            </p>
                           </div>
                         </div>
-                      )}
 
-                      {/* Analysis */}
-                      {section.analysis && (
-                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
-                          <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
-                                     font-semibold mb-3">
-                            Analysis
-                          </h4>
-                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {section.analysis}
-                          </p>
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
+                        {/* Statistical Details */}
+                        {section.stats && section.stats.length > 0 && (
+                          <div className="mb-6 opacity-90 group-hover:opacity-100 transition-opacity">
+                            <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
+                                       font-semibold mb-4">
+                              Statistical Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {section.stats.map((stat, statIdx) => (
+                                <motion.div
+                                  key={`stat-${statIdx}`}
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: statIdx * 0.05 }}
+                                  className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm
+                                         border border-gray-200 dark:border-gray-700
+                                         group-hover:shadow-md transition-shadow duration-200"
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                      {stat.label}
+                                    </span>
+                                    <span className="text-base font-semibold text-gray-900 dark:text-white
+                                                 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded">
+                                      {stat.value}
+                                    </span>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Analysis */}
+                        {section.analysis && (
+                          <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6
+                                      opacity-90 group-hover:opacity-100 transition-opacity">
+                            <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
+                                       font-semibold mb-3">
+                              Analysis
+                            </h4>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {section.analysis}
+                            </p>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))
+                  )}
                 </motion.div>
               ) : (
                 <motion.div
