@@ -614,13 +614,11 @@ def ai_analysis():
                 "error": "No analyzed samples available"
             }), 404
 
+        logger.info(f"Total samples from database: {len(analyzed_samples)}")
+
         # Convert samples and clean data
         processed_samples = []
         for sample in analyzed_samples:
-            # Skip samples with errors
-            if sample.get('error'):
-                continue
-                
             # First convert the entire sample to handle Decimal128 and datetime
             processed_sample = convert_sample(sample)
             
@@ -629,8 +627,7 @@ def ai_analysis():
             for key, value in processed_sample.items():
                 try:
                     if isinstance(value, (int, float)):
-                        if value < 0:  # Skip negative values
-                            continue
+                        # Keep negative values for now, we'll handle them in the analysis
                         final_sample[key] = value
                     else:
                         final_sample[key] = value
@@ -639,6 +636,8 @@ def ai_analysis():
                     
             if final_sample:
                 processed_samples.append(final_sample)
+
+        logger.info(f"Processed samples after conversion: {len(processed_samples)}")
 
         # Filter out outliers for VOC measurements
         voc_fields = [
@@ -652,21 +651,38 @@ def ai_analysis():
         # Calculate statistics with outlier removal
         stats = calculate_statistics(processed_samples, all_fields)
         
-        # Filter samples based on outlier bounds
+        # Filter samples based on outlier bounds, but only for extreme outliers
         filtered_samples = []
         for sample in processed_samples:
             include_sample = True
+            extreme_outlier_count = 0
+            total_fields_checked = 0
+            
             for field in all_fields:
                 if field in sample and stats[field]:
-                    value = float(sample[field])
-                    min_val = stats[field]['range']['min']
-                    max_val = stats[field]['range']['max']
-                    if value < min_val or value > max_val:
-                        include_sample = False
-                        break
+                    try:
+                        value = float(sample[field])
+                        min_val = stats[field]['range']['min']
+                        max_val = stats[field]['range']['max']
+                        total_fields_checked += 1
+                        
+                        # Only exclude if it's an extreme outlier (more than 3 IQR from median)
+                        q1 = stats[field].get('q1', min_val)
+                        q3 = stats[field].get('q3', max_val)
+                        iqr = q3 - q1
+                        lower_bound = q1 - 3 * iqr
+                        upper_bound = q3 + 3 * iqr
+                        
+                        if value < lower_bound or value > upper_bound:
+                            extreme_outlier_count += 1
+                    except (ValueError, TypeError):
+                        continue
             
-            if include_sample:
+            # Only exclude if more than 50% of fields are extreme outliers
+            if total_fields_checked > 0 and extreme_outlier_count / total_fields_checked <= 0.5:
                 filtered_samples.append(sample)
+
+        logger.info(f"Final filtered samples: {len(filtered_samples)}")
 
         # Use filtered samples for analysis
         data_hash = generate_data_hash(json.dumps(filtered_samples, sort_keys=True))
