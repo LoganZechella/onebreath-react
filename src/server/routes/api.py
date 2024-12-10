@@ -746,6 +746,9 @@ Provide responses that are:
 @require_auth
 def get_stat_details():
     try:
+        from ..main import analyzed_collection
+        from ..utils.helpers import calculate_statistics, convert_sample
+        
         data = request.json
         section = data.get('section')
         stat = data.get('stat')
@@ -756,77 +759,172 @@ def get_stat_details():
                 'error': 'Section and stat are required'
             }), 400
 
-        # Construct a detailed prompt for the specific statistic
-        prompt = f"""You are analyzing a specific statistical detail from a lung cancer VOC analysis.
-Please provide detailed information about the following statistic:
+        # Get raw data for calculations
+        analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
+        processed_samples = [convert_sample(sample) for sample in analyzed_samples]
 
-Section: {section}
-Statistic: {stat}
+        # Process samples based on section type
+        if section == "VOC Profile Analysis":
+            # Get positive and negative samples
+            positive_samples = [s for s in processed_samples 
+                             if s.get('sample_type') == 'LC Positive' 
+                             or (s.get('lung_RADS', 0) >= 3)]
+            negative_samples = [s for s in processed_samples 
+                              if s.get('sample_type') == 'LC Negative' 
+                              or (s.get('lung_RADS', 0) < 3)]
 
-Please provide a comprehensive analysis that includes:
+            # Extract VOC name from stat label
+            voc_name = stat.split(" ")[0]  # Assumes format "VOC_NAME average concentration" or similar
+            
+            # Calculate detailed statistics
+            pos_values = [float(s.get(voc_name, 0)) for s in positive_samples if voc_name in s]
+            neg_values = [float(s.get(voc_name, 0)) for s in negative_samples if voc_name in s]
+            
+            from scipy import stats
+            import numpy as np
 
-1. A clear description of what this statistic means
-2. A detailed breakdown of the components
-3. Any relevant trends or patterns
-4. Clinical implications
-5. Related metrics that provide context
+            # Statistical calculations
+            t_stat, p_value = stats.ttest_ind(pos_values, neg_values)
+            effect_size = (np.mean(pos_values) - np.mean(neg_values)) / np.std(pos_values + neg_values)
+            
+            details = {
+                "description": f"Detailed analysis of {voc_name} concentrations between lung cancer positive and negative samples",
+                "breakdown": [
+                    {"label": "Positive Sample Mean", "value": f"{np.mean(pos_values):.3f}"},
+                    {"label": "Negative Sample Mean", "value": f"{np.mean(neg_values):.3f}"},
+                    {"label": "Positive Sample Std", "value": f"{np.std(pos_values):.3f}"},
+                    {"label": "Negative Sample Std", "value": f"{np.std(neg_values):.3f}"},
+                    {"label": "Sample Size (Pos/Neg)", "value": f"{len(pos_values)}/{len(neg_values)}"}
+                ],
+                "trends": [
+                    {"label": "T-statistic", "value": f"{t_stat:.3f}"},
+                    {"label": "P-value", "value": f"{p_value:.3f}"},
+                    {"label": "Effect Size (Cohen's d)", "value": f"{effect_size:.3f}"},
+                    {"label": "Concentration Difference", "value": f"{np.mean(pos_values) - np.mean(neg_values):.3f}"}
+                ],
+                "implications": [
+                    f"The {abs(effect_size):.1f} standard deviation difference indicates " + 
+                    ("a strong" if abs(effect_size) > 0.8 else 
+                     "a moderate" if abs(effect_size) > 0.5 else "a small") + 
+                    " effect size",
+                    f"Statistical significance: " +
+                    ("Strong evidence" if p_value < 0.01 else
+                     "Moderate evidence" if p_value < 0.05 else
+                     "Weak evidence") + " of difference between groups",
+                    f"Direction: {'Higher' if np.mean(pos_values) > np.mean(neg_values) else 'Lower'} concentration in positive samples",
+                    "Consider these results alongside other VOC markers for comprehensive analysis"
+                ],
+                "relatedMetrics": [
+                    {"label": "Positive Sample Range", 
+                     "value": f"{np.min(pos_values):.3f} - {np.max(pos_values):.3f}"},
+                    {"label": "Negative Sample Range", 
+                     "value": f"{np.min(neg_values):.3f} - {np.max(neg_values):.3f}"},
+                    {"label": "Confidence Interval (95%)", 
+                     "value": f"{np.mean(pos_values) - 1.96 * np.std(pos_values):.3f} - {np.mean(pos_values) + 1.96 * np.std(pos_values):.3f}"}
+                ],
+                "visualizationType": "bar"  # Frontend can use this to render appropriate visualization
+            }
 
-Format the response as a JSON object with these fields:
-{{
-    "description": "A clear explanation of the statistic",
-    "breakdown": [
-        {{"label": "Component 1", "value": "Value 1"}},
-        {{"label": "Component 2", "value": "Value 2"}}
-    ],
-    "trends": [
-        {{"label": "Trend 1", "value": "Description 1"}},
-        {{"label": "Trend 2", "value": "Description 2"}}
-    ],
-    "implications": [
-        "Clinical implication 1",
-        "Clinical implication 2"
-    ],
-    "relatedMetrics": [
-        {{"label": "Related Metric 1", "value": "Value 1"}},
-        {{"label": "Related Metric 2", "value": "Value 2"}}
-    ]
-}}
+        elif section == "Sample Classification":
+            if "Total samples analyzed" in stat:
+                total = len(processed_samples)
+                positive = len([s for s in processed_samples 
+                              if s.get('sample_type') == 'LC Positive' 
+                              or (s.get('lung_RADS', 0) >= 3)])
+                negative = total - positive
 
-Focus on providing specific, evidence-based information that helps understand the significance of this statistic for lung cancer detection."""
-
-        # Get response from OpenAI
-        response = openai_client.chat.completions.create(
-            model="gpt-4-1106-preview",
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are an expert in medical statistics and lung cancer detection.
-Provide detailed, evidence-based analysis of statistical metrics.
-Format all responses as valid JSON objects."""
-                },
-                {
-                    "role": "user",
-                    "content": prompt
+                details = {
+                    "description": "Comprehensive breakdown of sample distribution and classification metrics",
+                    "breakdown": [
+                        {"label": "Total Samples", "value": total},
+                        {"label": "Positive Samples", "value": positive},
+                        {"label": "Negative Samples", "value": negative},
+                        {"label": "Positive Rate", "value": f"{(positive/total)*100:.1f}%"}
+                    ],
+                    "trends": [
+                        {"label": "Sample Collection Period", 
+                         "value": f"{min(s.get('timestamp', 'N/A') for s in processed_samples)} to {max(s.get('timestamp', 'N/A') for s in processed_samples)}"},
+                        {"label": "Classification Method", 
+                         "value": "lung-RADS ≥ 3 or LC Positive"},
+                        {"label": "Data Completeness", 
+                         "value": f"{len([s for s in processed_samples if all(k in s for k in ['sample_type', 'lung_RADS'])])}/{total}"}
+                    ],
+                    "implications": [
+                        f"Sample size of {total} provides {'adequate' if total >= 20 else 'limited'} statistical power",
+                        f"Positive:Negative ratio of {positive}:{negative} indicates {'balanced' if 0.4 <= positive/negative <= 2.5 else 'imbalanced'} dataset",
+                        "Classification uses both direct labeling and lung-RADS scores",
+                        "Consider sample size when interpreting statistical significance"
+                    ],
+                    "relatedMetrics": [
+                        {"label": "lung-RADS Distribution", 
+                         "value": f"1: {len([s for s in processed_samples if s.get('lung_RADS') == 1])}, " +
+                                 f"2: {len([s for s in processed_samples if s.get('lung_RADS') == 2])}, " +
+                                 f"3: {len([s for s in processed_samples if s.get('lung_RADS') == 3])}, " +
+                                 f"4: {len([s for s in processed_samples if s.get('lung_RADS') == 4])}"},
+                        {"label": "Direct Labels", 
+                         "value": f"Pos: {len([s for s in processed_samples if s.get('sample_type') == 'LC Positive'])}, " +
+                                 f"Neg: {len([s for s in processed_samples if s.get('sample_type') == 'LC Negative'])}"}
+                    ],
+                    "visualizationType": "pie"
                 }
-            ],
-            temperature=0.3,  # Lower temperature for more consistent JSON
-            response_format={ "type": "json_object" }  # Ensure JSON response
-        )
 
-        # Parse the JSON response
-        details = json.loads(response.choices[0].message.content)
-        
+        elif section == "Quality Assessment":
+            if "CO2" in stat:
+                co2_values = [float(s.get('average_co2', 0)) for s in processed_samples if 'average_co2' in s]
+                optimal_range = (2.0, 5.0)
+                
+                details = {
+                    "description": "Analysis of CO2 levels as a quality control metric for breath samples",
+                    "breakdown": [
+                        {"label": "Mean CO2", "value": f"{np.mean(co2_values):.2f}%"},
+                        {"label": "Median CO2", "value": f"{np.median(co2_values):.2f}%"},
+                        {"label": "Std Deviation", "value": f"{np.std(co2_values):.2f}%"},
+                        {"label": "Within Range", 
+                         "value": f"{len([v for v in co2_values if optimal_range[0] <= v <= optimal_range[1]])} samples"}
+                    ],
+                    "trends": [
+                        {"label": "Range", "value": f"{min(co2_values):.2f}% - {max(co2_values):.2f}%"},
+                        {"label": "Optimal Range", "value": f"{optimal_range[0]}% - {optimal_range[1]}%"},
+                        {"label": "Quality Rate", 
+                         "value": f"{len([v for v in co2_values if optimal_range[0] <= v <= optimal_range[1]]) / len(co2_values) * 100:.1f}%"}
+                    ],
+                    "implications": [
+                        f"{'High' if np.mean(co2_values) > np.median(co2_values) else 'Low'} skewness in CO2 distribution",
+                        f"Quality rate indicates {'excellent' if len([v for v in co2_values if optimal_range[0] <= v <= optimal_range[1]]) / len(co2_values) > 0.9 else 'good' if len([v for v in co2_values if optimal_range[0] <= v <= optimal_range[1]]) / len(co2_values) > 0.8 else 'concerning'} sample collection",
+                        "CO2 levels serve as key quality control metric",
+                        "Consider impact on VOC concentration reliability"
+                    ],
+                    "relatedMetrics": [
+                        {"label": "Below Range", 
+                         "value": f"{len([v for v in co2_values if v < optimal_range[0]])} samples"},
+                        {"label": "Above Range", 
+                         "value": f"{len([v for v in co2_values if v > optimal_range[1]])} samples"},
+                        {"label": "Interquartile Range", 
+                         "value": f"{np.percentile(co2_values, 25):.2f}% - {np.percentile(co2_values, 75):.2f}%"}
+                    ],
+                    "visualizationType": "line"
+                }
+
+        else:
+            # Generic statistical analysis for other sections
+            details = {
+                "description": f"Statistical analysis of {stat}",
+                "breakdown": [
+                    {"label": "Sample Size", "value": len(processed_samples)},
+                    {"label": "Data Completeness", 
+                     "value": f"{len([s for s in processed_samples if stat.lower() in {k.lower() for k in s.keys()}])}"}
+                ],
+                "implications": [
+                    "Consider this metric in context of overall analysis",
+                    "Refer to related sections for comprehensive understanding"
+                ]
+            }
+
         return jsonify({
             'success': True,
             'details': details
         })
 
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parsing error in stat details: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to parse AI response'
-        }), 500
     except Exception as e:
         logger.error(f"Error in stat details endpoint: {str(e)}")
         return jsonify({

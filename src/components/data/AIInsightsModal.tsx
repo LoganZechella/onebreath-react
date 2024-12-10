@@ -1,6 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { sampleService } from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BarChart, Bar,
+  LineChart, Line,
+  PieChart, Pie,
+  XAxis, YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell
+} from 'recharts';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -37,6 +46,180 @@ interface ExpandedStat {
   sectionTitle: string;
   stat: Stat;
 }
+
+// Add styles directly to the component
+const LoadingSpinner = () => (
+  <div className="h-[200px] flex items-center justify-center">
+    <div className="relative">
+      <div className="w-12 h-12 border-4 border-primary/20 rounded-full">
+        <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary rounded-full animate-spin" />
+      </div>
+      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+        Preparing visualization...
+      </div>
+    </div>
+  </div>
+);
+
+const StatVisualization = ({ type, data }: { 
+  type: 'bar' | 'pie' | 'line';
+  data: any[];
+}) => {
+  const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  switch (type) {
+    case 'bar':
+      // Transform breakdown data for bar chart
+      const barData = data.map(item => ({
+        name: item.label,
+        value: parseFloat(item.value)
+      })).filter(item => !isNaN(item.value));
+
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full h-[200px]"
+        >
+          <ResponsiveContainer>
+            <BarChart data={barData}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              />
+              <Bar dataKey="value" fill="#0088FE">
+                {barData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]}>
+                    <animate
+                      attributeName="height"
+                      from="0"
+                      to={barData[index].value}
+                      dur="0.5s"
+                      fill="freeze"
+                    />
+                  </Cell>
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+      );
+
+    case 'pie':
+      // Transform breakdown data for pie chart
+      const pieData = data.map(item => ({
+        name: item.label,
+        value: typeof item.value === 'string' ? 
+          parseFloat(item.value.replace('%', '')) : 
+          parseFloat(item.value)
+      })).filter(item => !isNaN(item.value));
+
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="w-full h-[200px]"
+        >
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                label
+                animationBegin={0}
+                animationDuration={800}
+                animationEasing="ease-out"
+              >
+                {pieData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </motion.div>
+      );
+
+    case 'line':
+      // Transform trends data for line chart
+      const lineData = data.map(item => ({
+        name: item.label,
+        value: typeof item.value === 'string' ? 
+          parseFloat(item.value.replace('%', '')) : 
+          parseFloat(item.value)
+      })).filter(item => !isNaN(item.value));
+
+      return (
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full h-[200px]"
+        >
+          <ResponsiveContainer>
+            <LineChart data={lineData}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="value" 
+                stroke="#0088FE"
+                strokeWidth={2}
+                dot={{ strokeWidth: 2 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+                animationBegin={0}
+                animationDuration={800}
+                animationEasing="ease-out"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </motion.div>
+      );
+
+    default:
+      return null;
+  }
+};
 
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
   const [loading, setLoading] = useState(false);
@@ -201,6 +384,19 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
             {stat.value}
           </div>
         </div>
+
+        {/* Visualization */}
+        {details.visualizationType && details.breakdown && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Visualization
+            </h4>
+            <StatVisualization 
+              type={details.visualizationType} 
+              data={details.breakdown}
+            />
+          </div>
+        )}
 
         {details.breakdown && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">

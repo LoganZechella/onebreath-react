@@ -375,14 +375,22 @@
   scroll-behavior: smooth;
 }
 
+/* Loading Spinner Animation */
 @keyframes spin-fast {
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .animate-spin-fast {
   animation: spin-fast 0.8s linear infinite;
+  -webkit-animation: spin-fast 0.8s linear infinite;
+  -moz-animation: spin-fast 0.8s linear infinite;
+  -ms-animation: spin-fast 0.8s linear infinite;
+}
+
+@-webkit-keyframes spin-fast {
+  from { -webkit-transform: rotate(0deg); }
+  to { -webkit-transform: rotate(360deg); }
 }
 
 .analysis-section {
