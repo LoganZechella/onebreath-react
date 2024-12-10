@@ -16,8 +16,8 @@ interface AnalysisSection {
   title: string;
   keyFinding: string;
   content: string[];
-  stats?: Stat[];
-  analysis?: string;
+  stats: Stat[];
+  analysis: string;
 }
 
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
@@ -51,51 +51,69 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   };
 
   const parseInsights = (text: string) => {
-    const sections = text.split('\n\n').filter(Boolean).map(section => {
-      const lines = section.split('\n');
-      let title = lines[0].replace(/^###\s*/, '').replace(/^#+\s*/, '').trim();
-      let keyFinding = '';
-      let stats: Stat[] = [];
-      let analysis = '';
-      let content: string[] = [];
+    const sections = text.split('\n\n').filter(Boolean);
+    const parsedSections: AnalysisSection[] = [];
+    let currentSection: AnalysisSection | null = null;
+
+    sections.forEach(section => {
+      const lines = section.split('\n').filter(line => line.trim());
       
-      let currentSection = '';
-      
-      lines.slice(1).forEach(line => {
+      // Check if this is a new section header
+      if (lines[0].startsWith('###')) {
+        if (currentSection) {
+          parsedSections.push(currentSection);
+        }
+        currentSection = {
+          title: lines[0].replace(/^###\s*/, '').trim(),
+          keyFinding: '',
+          content: [],
+          stats: [],
+          analysis: ''
+        };
+        return;
+      }
+
+      // Skip processing if we don't have a current section
+      if (!currentSection) return;
+
+      // Process the content based on the line type
+      lines.forEach(line => {
+        // Skip processing if somehow we lost our current section
+        if (!currentSection) return;
+
         const trimmedLine = line.trim();
         
+        // Process the line based on its content
         if (trimmedLine.startsWith('**Key Finding:**')) {
-          keyFinding = trimmedLine.replace('**Key Finding:**', '').trim();
+          currentSection.keyFinding = trimmedLine.replace('**Key Finding:**', '').trim();
         } else if (trimmedLine.startsWith('**Statistical Details:**')) {
-          currentSection = 'stats';
+          // Stats array is already initialized, no need to do anything here
         } else if (trimmedLine.startsWith('**Analysis:**')) {
-          currentSection = 'analysis';
-        } else if (trimmedLine && currentSection === 'stats' && trimmedLine.startsWith('-')) {
+          currentSection.analysis = '';
+        } else if (trimmedLine.startsWith('-')) {
+          // Add stat if we're in a stats section
           const statLine = trimmedLine.substring(1).trim();
           const [label, value] = statLine.split(':').map(s => s.trim());
           if (label && value) {
-            stats.push({ label, value });
+            currentSection.stats.push({ label, value });
           }
-        } else if (trimmedLine && currentSection === 'analysis') {
-          analysis = trimmedLine;
-        }
-        
-        // Add all non-empty lines to content
-        if (trimmedLine) {
-          content.push(trimmedLine);
+        } else if (trimmedLine && !trimmedLine.startsWith('**')) {
+          // If we're in an analysis section and this is plain text, append it
+          if (currentSection.analysis !== undefined) {
+            currentSection.analysis += (currentSection.analysis ? ' ' : '') + trimmedLine;
+          }
+          // Add to general content
+          currentSection.content.push(trimmedLine);
         }
       });
-
-      return {
-        title,
-        keyFinding: keyFinding || 'No key finding available',
-        content,
-        stats: stats.length > 0 ? stats : undefined,
-        analysis: analysis || undefined
-      } as AnalysisSection;
     });
 
-    setSections(sections);
+    // Don't forget to add the last section
+    if (currentSection) {
+      parsedSections.push(currentSection);
+    }
+
+    setSections(parsedSections);
   };
 
   if (!isOpen) return null;
@@ -213,7 +231,7 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                             Key Finding
                           </h4>
                           <p className="text-gray-900 dark:text-white text-lg font-medium leading-relaxed">
-                            {section.keyFinding}
+                            {section.keyFinding || 'No key finding available'}
                           </p>
                         </div>
                       </div>
