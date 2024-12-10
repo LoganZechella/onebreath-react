@@ -7,16 +7,28 @@ interface AIInsightsModalProps {
   onClose: () => void;
 }
 
+interface StatDetails {
+  description: string;
+  breakdown: { label: string; value: string }[];
+  trends: { label: string; value: string }[];
+  implications: string[];
+  relatedMetrics: { label: string; value: string }[];
+  visualizationType: string;
+}
+
+interface APIStatDetails {
+  description: string;
+  breakdown: { label: string; value: string | number }[];
+  trends: { label: string; value: string | number }[];
+  implications: string[];
+  relatedMetrics: { label: string; value: string | number }[];
+  visualizationType: string;
+}
+
 interface Stat {
   label: string;
   value: string;
-  details?: {
-    description?: string;
-    breakdown?: { label: string; value: string | number }[];
-    trends?: { label: string; value: string | number }[];
-    implications?: string[];
-    relatedMetrics?: { label: string; value: string | number }[];
-  };
+  details?: StatDetails;
 }
 
 interface AnalysisSection {
@@ -155,11 +167,35 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
       try {
         const response = await sampleService.getStatDetails(sectionTitle, stat.label);
         if (response.success && response.details) {
+          const apiDetails = response.details as APIStatDetails;
+          
+          const details: StatDetails = {
+            description: apiDetails.description || '',
+            breakdown: apiDetails.breakdown.map(item => ({
+              label: item.label,
+              value: String(item.value)
+            })),
+            trends: apiDetails.trends.map(item => ({
+              label: item.label,
+              value: String(item.value)
+            })),
+            implications: apiDetails.implications || [],
+            relatedMetrics: apiDetails.relatedMetrics.map(item => ({
+              label: item.label,
+              value: String(item.value)
+            })),
+            visualizationType: apiDetails.visualizationType || 'bar'
+          };
+
+          // Update the sections state with the new details
           const updatedSections = sections.map(section => {
             if (section.title === sectionTitle) {
               const updatedStats = section.stats.map(s => {
                 if (s.label === stat.label) {
-                  return { ...s, details: response.details };
+                  return { 
+                    ...s, 
+                    details
+                  };
                 }
                 return s;
               });
@@ -168,6 +204,15 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
             return section;
           });
           setSections(updatedSections);
+          
+          // Also update the expanded stat
+          setExpandedStat(prev => prev ? {
+            ...prev,
+            stat: {
+              ...prev.stat,
+              details
+            }
+          } : null);
         }
       } catch (error) {
         console.error('Error fetching stat details:', error);
@@ -179,7 +224,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     if (!expandedStat?.stat) return null;
 
     const { stat } = expandedStat;
-    const details = stat.details || {};
+    const details = stat.details;
+
+    if (!details) return null;
 
     return (
       <motion.div
@@ -202,13 +249,13 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
           </div>
         </div>
 
-        {/* Chemical Identity & Detection Method */}
-        {details.breakdown && (
+        {/* Breakdown Information */}
+        {details.breakdown && details.breakdown.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-              Compound Information
+              Statistical Breakdown
             </h4>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {details.breakdown.map((item, index) => (
                 <div
                   key={index}
@@ -227,21 +274,21 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         )}
 
         {/* Trends & Patterns */}
-        {details.trends && (
+        {details.trends && details.trends.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
               Trends & Patterns
             </h4>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {details.trends.map((trend, index) => (
                 <div
                   key={index}
-                  className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
                 >
-                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {trend.label}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="mt-1 text-base text-gray-900 dark:text-white">
                     {trend.value}
                   </div>
                 </div>
@@ -271,21 +318,21 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         )}
 
         {/* Related Metrics */}
-        {details.relatedMetrics && (
+        {details.relatedMetrics && details.relatedMetrics.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
               Related Metrics
             </h4>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {details.relatedMetrics.map((metric, index) => (
                 <div
                   key={index}
                   className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
                 >
-                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {metric.label}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="mt-1 text-base text-gray-900 dark:text-white">
                     {metric.value}
                   </div>
                 </div>
