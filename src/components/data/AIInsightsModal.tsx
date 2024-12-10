@@ -373,6 +373,50 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
     }
   };
 
+  const handleExport = () => {
+    if (!sections.length) return;
+
+    const content = sections.map(section => {
+      const sectionText = [
+        `# ${section.title}`,
+        '',
+        '## Key Finding',
+        section.keyFinding,
+        '',
+        '## Statistical Details',
+        ...(section.stats?.map(stat => (
+          `${stat.label}: ${stat.value}${
+            stat.details ? `\n  Description: ${stat.details.description}\n  ${
+              stat.details.breakdown.map(b => `  - ${b.label}: ${b.value}`).join('\n  ')
+            }\n  Trends:\n  ${
+              stat.details.trends.map(t => `  - ${t.label}: ${t.value}`).join('\n  ')
+            }\n  Implications:\n  ${
+              stat.details.implications.map(i => `  - ${i}`).join('\n  ')
+            }\n  Related Metrics:\n  ${
+              stat.details.relatedMetrics.map(m => `  - ${m.label}: ${m.value}`).join('\n  ')
+            }` : ''
+          }`
+        )) || []),
+        '',
+        '## Analysis',
+        section.analysis || 'No analysis available',
+        '\n---\n'
+      ].filter(Boolean);
+
+      return sectionText.join('\n');
+    }).join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai-analysis.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -406,6 +450,20 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
               </p>
             </div>
             <div className="flex gap-2">
+              {sections.length > 0 && (
+                <button
+                  onClick={handleExport}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
+                           dark:hover:text-gray-200 transition-colors p-2 rounded-lg
+                           hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Export Analysis"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+              )}
               {(expandedSection || expandedStat) && (
                 <button
                   onClick={() => {
