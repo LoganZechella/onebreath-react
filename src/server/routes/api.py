@@ -604,6 +604,7 @@ def ai_analysis():
         
     try:
         from ..main import analyzed_collection, openai_client
+        from ..utils.helpers import calculate_statistics
         
         # Fetch and preprocess data
         analyzed_samples = list(analyzed_collection.find({}, {'_id': 0}))
@@ -628,7 +629,7 @@ def ai_analysis():
             for key, value in processed_sample.items():
                 try:
                     if isinstance(value, (int, float)):
-                        if key.endswith('_per_liter') and value < 0:
+                        if value < 0:  # Skip negative values
                             continue
                         final_sample[key] = value
                     else:
@@ -639,8 +640,36 @@ def ai_analysis():
             if final_sample:
                 processed_samples.append(final_sample)
 
-        # Generate cache key based on data
-        data_hash = generate_data_hash(json.dumps(processed_samples, sort_keys=True))
+        # Filter out outliers for VOC measurements
+        voc_fields = [
+            '2-Butanone', 'Pentanal', 'Decanal', 
+            '2-hydroxy-acetaldehyde', '2-hydroxy-3-butanone',
+            '4-HHE', '4-HNE'
+        ]
+        voc_per_liter_fields = [f"{voc}_per_liter" for voc in voc_fields]
+        all_fields = voc_fields + voc_per_liter_fields + ['average_co2', 'final_volume']
+        
+        # Calculate statistics with outlier removal
+        stats = calculate_statistics(processed_samples, all_fields)
+        
+        # Filter samples based on outlier bounds
+        filtered_samples = []
+        for sample in processed_samples:
+            include_sample = True
+            for field in all_fields:
+                if field in sample and stats[field]:
+                    value = float(sample[field])
+                    min_val = stats[field]['range']['min']
+                    max_val = stats[field]['range']['max']
+                    if value < min_val or value > max_val:
+                        include_sample = False
+                        break
+            
+            if include_sample:
+                filtered_samples.append(sample)
+
+        # Use filtered samples for analysis
+        data_hash = generate_data_hash(json.dumps(filtered_samples, sort_keys=True))
         
         # Check cache
         cached_result = get_cached_analysis(data_hash)
@@ -651,13 +680,6 @@ def ai_analysis():
                 "cached": True
             })
 
-        # Prepare data summary for OpenAI
-        voc_fields = [
-            '2-Butanone', 'Pentanal', 'Decanal', 
-            '2-hydroxy-acetaldehyde', '2-hydroxy-3-butanone',
-            '4-HHE', '4-HNE'
-        ]
-        
         # Create prompt for OpenAI
         system_prompt = """You are an expert data scientist specializing in biomarker analysis and cancer detection through VOC (Volatile Organic Compounds) analysis. Your expertise includes advanced statistical analysis, pattern recognition, and medical diagnostics.
 
@@ -708,7 +730,7 @@ Use precise numerical values and include:
 
 Flag any findings that could be clinically significant, even if not yet statistically significant due to sample size."""
 
-        user_prompt = f"""Analyze this dataset of {len(processed_samples)} breath samples with the following priorities:
+        user_prompt = f"""Analyze this dataset of {len(filtered_samples)} breath samples with the following priorities:
 
 1. Primary Analysis:
    - Identify VOC patterns distinguishing cancer-positive from cancer-negative cases
@@ -750,7 +772,7 @@ Consider both individual VOCs and potential combined biomarker signatures."""
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
-                            {"role": "user", "content": f"Data: {json.dumps(processed_samples)}"}
+                            {"role": "user", "content": f"Data: {json.dumps(filtered_samples)}"}
                         ],
                         temperature=0.2,
                         max_completion_tokens=8192
