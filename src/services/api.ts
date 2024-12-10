@@ -175,22 +175,15 @@ export const sampleService = {
 
   async getAIResponse(question: string, context: any): Promise<AIResponse> {
     try {
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question,
-          context
-        }),
+      const response = await api.post('/ai/chat', {
+        question,
+        context
       });
 
-      const data = await response.json();
       return {
-        success: response.ok,
-        message: data.message,
-        error: data.error
+        success: true,
+        message: response.data.message,
+        error: response.data.error
       };
     } catch (error) {
       console.error('Error in getAIResponse:', error);
