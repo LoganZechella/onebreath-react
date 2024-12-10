@@ -764,7 +764,106 @@ def get_stat_details():
         processed_samples = [convert_sample(sample) for sample in analyzed_samples]
 
         # Process samples based on section type
-        if section == "VOC Profile Analysis":
+        if section == "Sample Classification":
+            # Get positive and negative samples
+            positive_samples = [s for s in processed_samples 
+                             if s.get('sample_type') == 'LC Positive' 
+                             or (s.get('lung_RADS', 0) >= 3)]
+            negative_samples = [s for s in processed_samples 
+                              if s.get('sample_type') == 'LC Negative' 
+                              or (s.get('lung_RADS', 0) < 3)]
+
+            if "Lung cancer positive" in stat:
+                details = {
+                    "description": "Detailed analysis of lung cancer positive samples",
+                    "breakdown": [
+                        {"label": "Total Positive Samples", "value": len(positive_samples)},
+                        {"label": "By lung-RADS ≥ 3", "value": len([s for s in positive_samples if s.get('lung_RADS', 0) >= 3])},
+                        {"label": "By LC Positive Label", "value": len([s for s in positive_samples if s.get('sample_type') == 'LC Positive'])},
+                        {"label": "With Histology Data", "value": len([s for s in positive_samples if s.get('cancer_histology')])},
+                        {"label": "With Staging Data", "value": len([s for s in positive_samples if s.get('cancer_stage')])},
+                    ],
+                    "trends": [
+                        {"label": "Positive Rate", "value": f"{(len(positive_samples) / len(processed_samples)) * 100:.1f}%"},
+                        {"label": "Average lung-RADS", "value": f"{sum(s.get('lung_RADS', 0) for s in positive_samples) / len(positive_samples):.1f}"},
+                        {"label": "Detection Method Split", "value": "lung-RADS/Direct Label"},
+                        {"label": "Data Completeness", "value": f"{len([s for s in positive_samples if all(k in s for k in ['sample_type', 'lung_RADS'])])}/{len(positive_samples)}"}
+                    ],
+                    "implications": [
+                        "Sample distribution indicates representative dataset for lung cancer detection",
+                        "Multiple detection criteria provide comprehensive classification",
+                        "Histology and staging data available for subset of positive cases",
+                        "Consider both lung-RADS and direct labeling in analysis"
+                    ],
+                    "relatedMetrics": [
+                        {"label": "Histology Distribution", 
+                         "value": ", ".join(f"{h}: {len([s for s in positive_samples if s.get('cancer_histology') == h])}" 
+                                          for h in set(s.get('cancer_histology') for s in positive_samples if s.get('cancer_histology')))},
+                        {"label": "Stage Distribution", 
+                         "value": ", ".join(f"{st}: {len([s for s in positive_samples if s.get('cancer_stage') == st])}" 
+                                          for st in set(s.get('cancer_stage') for s in positive_samples if s.get('cancer_stage')))},
+                        {"label": "lung-RADS Distribution", 
+                         "value": f"3: {len([s for s in positive_samples if s.get('lung_RADS') == 3])}, " +
+                                 f"4: {len([s for s in positive_samples if s.get('lung_RADS') == 4])}"}
+                    ],
+                    "visualizationType": "pie"
+                }
+            elif "Total samples analyzed" in stat:
+                total = len(processed_samples)
+                positive = len([s for s in processed_samples 
+                              if s.get('sample_type') == 'LC Positive' 
+                              or (s.get('lung_RADS', 0) >= 3)])
+                negative = total - positive
+
+                details = {
+                    "description": "Comprehensive breakdown of sample distribution and classification metrics",
+                    "breakdown": [
+                        {"label": "Total Samples", "value": total},
+                        {"label": "Positive Samples", "value": positive},
+                        {"label": "Negative Samples", "value": negative},
+                        {"label": "Positive Rate", "value": f"{(positive/total)*100:.1f}%"}
+                    ],
+                    "trends": [
+                        {"label": "Sample Collection Period", 
+                         "value": f"{min(s.get('timestamp', 'N/A') for s in processed_samples)} to {max(s.get('timestamp', 'N/A') for s in processed_samples)}"},
+                        {"label": "Classification Method", 
+                         "value": "lung-RADS ≥ 3 or LC Positive"},
+                        {"label": "Data Completeness", 
+                         "value": f"{len([s for s in processed_samples if all(k in s for k in ['sample_type', 'lung_RADS'])])}/{total}"}
+                    ],
+                    "implications": [
+                        f"Sample size of {total} provides {'adequate' if total >= 20 else 'limited'} statistical power",
+                        f"Positive:Negative ratio of {positive}:{negative} indicates {'balanced' if 0.4 <= positive/negative <= 2.5 else 'imbalanced'} dataset",
+                        "Classification uses both direct labeling and lung-RADS scores",
+                        "Consider sample size when interpreting statistical significance"
+                    ],
+                    "relatedMetrics": [
+                        {"label": "lung-RADS Distribution", 
+                         "value": f"1: {len([s for s in processed_samples if s.get('lung_RADS') == 1])}, " +
+                                 f"2: {len([s for s in processed_samples if s.get('lung_RADS') == 2])}, " +
+                                 f"3: {len([s for s in processed_samples if s.get('lung_RADS') == 3])}, " +
+                                 f"4: {len([s for s in processed_samples if s.get('lung_RADS') == 4])}"},
+                        {"label": "Direct Labels", 
+                         "value": f"Pos: {len([s for s in processed_samples if s.get('sample_type') == 'LC Positive'])}, " +
+                                 f"Neg: {len([s for s in processed_samples if s.get('sample_type') == 'LC Negative'])}"}
+                    ],
+                    "visualizationType": "pie"
+                }
+            else:
+                details = {
+                    "description": f"Analysis of {stat}",
+                    "breakdown": [
+                        {"label": "Sample Size", "value": len(processed_samples)},
+                        {"label": "Data Completeness", 
+                         "value": f"{len([s for s in processed_samples if stat.lower() in {k.lower() for k in s.keys()}])}"}
+                    ],
+                    "implications": [
+                        "Consider this metric in context of overall analysis",
+                        "Refer to related sections for comprehensive understanding"
+                    ]
+                }
+
+        elif section == "VOC Profile Analysis":
             # Get positive and negative samples
             positive_samples = [s for s in processed_samples 
                              if s.get('sample_type') == 'LC Positive' 
@@ -824,49 +923,6 @@ def get_stat_details():
                 ],
                 "visualizationType": "bar"  # Frontend can use this to render appropriate visualization
             }
-
-        elif section == "Sample Classification":
-            if "Total samples analyzed" in stat:
-                total = len(processed_samples)
-                positive = len([s for s in processed_samples 
-                              if s.get('sample_type') == 'LC Positive' 
-                              or (s.get('lung_RADS', 0) >= 3)])
-                negative = total - positive
-
-                details = {
-                    "description": "Comprehensive breakdown of sample distribution and classification metrics",
-                    "breakdown": [
-                        {"label": "Total Samples", "value": total},
-                        {"label": "Positive Samples", "value": positive},
-                        {"label": "Negative Samples", "value": negative},
-                        {"label": "Positive Rate", "value": f"{(positive/total)*100:.1f}%"}
-                    ],
-                    "trends": [
-                        {"label": "Sample Collection Period", 
-                         "value": f"{min(s.get('timestamp', 'N/A') for s in processed_samples)} to {max(s.get('timestamp', 'N/A') for s in processed_samples)}"},
-                        {"label": "Classification Method", 
-                         "value": "lung-RADS ≥ 3 or LC Positive"},
-                        {"label": "Data Completeness", 
-                         "value": f"{len([s for s in processed_samples if all(k in s for k in ['sample_type', 'lung_RADS'])])}/{total}"}
-                    ],
-                    "implications": [
-                        f"Sample size of {total} provides {'adequate' if total >= 20 else 'limited'} statistical power",
-                        f"Positive:Negative ratio of {positive}:{negative} indicates {'balanced' if 0.4 <= positive/negative <= 2.5 else 'imbalanced'} dataset",
-                        "Classification uses both direct labeling and lung-RADS scores",
-                        "Consider sample size when interpreting statistical significance"
-                    ],
-                    "relatedMetrics": [
-                        {"label": "lung-RADS Distribution", 
-                         "value": f"1: {len([s for s in processed_samples if s.get('lung_RADS') == 1])}, " +
-                                 f"2: {len([s for s in processed_samples if s.get('lung_RADS') == 2])}, " +
-                                 f"3: {len([s for s in processed_samples if s.get('lung_RADS') == 3])}, " +
-                                 f"4: {len([s for s in processed_samples if s.get('lung_RADS') == 4])}"},
-                        {"label": "Direct Labels", 
-                         "value": f"Pos: {len([s for s in processed_samples if s.get('sample_type') == 'LC Positive'])}, " +
-                                 f"Neg: {len([s for s in processed_samples if s.get('sample_type') == 'LC Negative'])}"}
-                    ],
-                    "visualizationType": "pie"
-                }
 
         elif section == "Quality Assessment":
             if "CO2" in stat:
