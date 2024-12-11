@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/recharts": "^1.8.29",
     "@types/socket.io-client": "^1.4.36",
     "animate.css": "^4.1.1",
     "aos": "^2.3.4",
@@ -23,6 +24,7 @@
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.22.0",
+    "recharts": "^2.14.1",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {

@@ -56,6 +56,27 @@ interface StatisticsSummaryResponse {
     sampleCount: number;
 }
 
+interface AIResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+interface StatDetails {
+  description?: string;
+  breakdown?: { label: string; value: string | number }[];
+  trends?: { label: string; value: string | number }[];
+  implications?: string[];
+  relatedMetrics?: { label: string; value: string | number }[];
+  visualizationType?: 'bar' | 'pie' | 'line';
+}
+
+interface StatDetailsResponse {
+  success: boolean;
+  details?: StatDetails;
+  error?: string;
+}
+
 export const sampleService = {
   getSamples: async (): Promise<Sample[]> => {
     try {
@@ -164,6 +185,47 @@ export const sampleService = {
     } catch (error) {
       console.error('Error updating expired samples:', error);
       throw error;
+    }
+  },
+
+  async getAIResponse(question: string, context: any): Promise<AIResponse> {
+    try {
+      const response = await api.post('/ai/chat', {
+        question,
+        context
+      });
+
+      return {
+        success: true,
+        message: response.data.message,
+        error: response.data.error
+      };
+    } catch (error) {
+      console.error('Error in getAIResponse:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get AI response'
+      };
+    }
+  },
+
+  async getStatDetails(sectionTitle: string, statLabel: string): Promise<StatDetailsResponse> {
+    try {
+      const response = await api.post('/ai/stat_details', {
+        section: sectionTitle,
+        stat: statLabel
+      });
+
+      return {
+        success: true,
+        details: response.data.details
+      };
+    } catch (error) {
+      console.error('Error in getStatDetails:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get stat details'
+      };
     }
   },
 };

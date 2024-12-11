@@ -7,15 +7,46 @@ interface AIInsightsModalProps {
   onClose: () => void;
 }
 
+interface StatDetails {
+  description: string;
+  breakdown: { label: string; value: string }[];
+  trends: { label: string; value: string }[];
+  implications: string[];
+  relatedMetrics: { label: string; value: string }[];
+  visualizationType: string;
+}
+
+interface APIStatDetails {
+  description: string;
+  breakdown: { label: string; value: string | number }[];
+  trends: { label: string; value: string | number }[];
+  implications: string[];
+  relatedMetrics: { label: string; value: string | number }[];
+  visualizationType: string;
+}
+
 interface Stat {
   label: string;
   value: string;
+  details?: StatDetails;
 }
 
 interface AnalysisSection {
   title: string;
+  keyFinding: string;
   content: string[];
-  stats?: Stat[];
+  stats: Stat[];
+  analysis: string;
+}
+
+interface ExpandedSection {
+  section: AnalysisSection;
+  chatHistory: { role: 'user' | 'assistant'; content: string }[];
+}
+
+interface ExpandedStat {
+  sectionTitle: string;
+  stat: Stat;
 }
 
 export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProps) {
@@ -23,6 +54,9 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [sections, setSections] = useState<AnalysisSection[]>([]);
+  const [expandedSection, setExpandedSection] = useState<ExpandedSection | null>(null);
+  const [expandedStat, setExpandedStat] = useState<ExpandedStat | null>(null);
+  const [userQuestion, setUserQuestion] = useState('');
 
   const fetchInsights = async (retry = 0) => {
     setLoading(true);
@@ -49,44 +83,338 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
   };
 
   const parseInsights = (text: string) => {
-    const sections = text.split('\n\n').filter(Boolean).map(section => {
-      const lines = section.split('\n');
-      
-      let title = lines[0].replace(/^###\s*/, '').replace(/^#+\s*/, '').trim();
-      
-      const content = lines.slice(1)
-        .filter(line => line.trim())
-        .map(line => {
-          return line
-            .replace(/^\s*[*-]\s+/, '')  // Remove list markers
-            .replace(/^#+\s*/, '')       // Remove any header markers
-            .trim();
-        });
+    const sections = text.split('\n\n').filter(Boolean);
+    const parsedSections: AnalysisSection[] = [];
+    let currentSection: AnalysisSection | null = null;
 
-      const stats: Stat[] = [];
-      let currentCompound = '';
+    sections.forEach(section => {
+      const lines = section.split('\n').filter(line => line.trim());
       
-      content.forEach(line => {
-        if (line.endsWith(':')) {
-          currentCompound = line.slice(0, -1).trim();
-        } else if (line.includes(':')) {
-          const [label, value] = line.split(':').map(s => s.trim());
+      // Check if this is a new section header
+      if (lines[0].startsWith('###')) {
+        if (currentSection) {
+          parsedSections.push(currentSection);
+        }
+        currentSection = {
+          title: lines[0].replace(/^###\s*/, '').trim(),
+          keyFinding: '',
+          content: [],
+          stats: [],
+          analysis: ''
+        };
+        return;
+      }
+
+      // Skip processing if we don't have a current section
+      if (!currentSection) return;
+
+      // Process the content based on the line type
+      lines.forEach(line => {
+        // Skip processing if somehow we lost our current section
+        if (!currentSection) return;
+
+        const trimmedLine = line.trim();
+        
+        // Process the line based on its content
+        if (trimmedLine.startsWith('**Key Finding:**')) {
+          currentSection.keyFinding = trimmedLine.replace('**Key Finding:**', '').trim();
+        } else if (trimmedLine.startsWith('**Statistical Details:**')) {
+          // Stats array is already initialized, no need to do anything here
+        } else if (trimmedLine.startsWith('**Analysis:**')) {
+          currentSection.analysis = '';
+        } else if (trimmedLine.startsWith('-')) {
+          // Add stat if we're in a stats section
+          const statLine = trimmedLine.substring(1).trim();
+          const [label, value] = statLine.split(':').map(s => s.trim());
           if (label && value) {
-            const fullLabel = currentCompound ? `${currentCompound} - ${label}` : label;
-            stats.push({ label: fullLabel, value });
+            currentSection.stats.push({ label, value });
           }
+        } else if (trimmedLine && !trimmedLine.startsWith('**')) {
+          // If we're in an analysis section and this is plain text, append it
+          if (currentSection.analysis !== undefined) {
+            currentSection.analysis += (currentSection.analysis ? ' ' : '') + trimmedLine;
+          }
+          // Add to general content
+          currentSection.content.push(trimmedLine);
         }
       });
-
-      return { 
-        title,
-        content: content.filter(line => !line.includes(':')),
-        stats: stats.length > 0 ? stats : undefined
-      };
     });
 
-    setSections(sections.filter(section => section.title && 
-      (section.content.length > 0 || (section.stats && section.stats.length > 0))));
+    // Don't forget to add the last section
+    if (currentSection) {
+      parsedSections.push(currentSection);
+    }
+
+    setSections(parsedSections);
+  };
+
+  const handleSectionClick = (section: AnalysisSection) => {
+    setExpandedSection({
+      section,
+      chatHistory: [{
+        role: 'assistant',
+        content: `Let's explore the key finding: ${section.keyFinding}\n\nI can help you understand the details and implications of this finding. What would you like to know more about?`
+      }]
+    });
+    setExpandedStat(null);
+  };
+
+  const handleStatClick = async (sectionTitle: string, stat: Stat) => {
+    setExpandedSection(null);
+    setExpandedStat({ sectionTitle, stat });
+
+    if (!stat.details) {
+      try {
+        const response = await sampleService.getStatDetails(sectionTitle, stat.label);
+        if (response.success && response.details) {
+          const apiDetails = response.details as APIStatDetails;
+          
+          const details: StatDetails = {
+            description: apiDetails.description || '',
+            breakdown: apiDetails.breakdown.map(item => ({
+              label: item.label,
+              value: String(item.value)
+            })),
+            trends: apiDetails.trends.map(item => ({
+              label: item.label,
+              value: String(item.value)
+            })),
+            implications: apiDetails.implications || [],
+            relatedMetrics: apiDetails.relatedMetrics.map(item => ({
+              label: item.label,
+              value: String(item.value)
+            })),
+            visualizationType: apiDetails.visualizationType || 'bar'
+          };
+
+          // Update the sections state with the new details
+          const updatedSections = sections.map(section => {
+            if (section.title === sectionTitle) {
+              const updatedStats = section.stats.map(s => {
+                if (s.label === stat.label) {
+                  return { 
+                    ...s, 
+                    details
+                  };
+                }
+                return s;
+              });
+              return { ...section, stats: updatedStats };
+            }
+            return section;
+          });
+          setSections(updatedSections);
+          
+          // Also update the expanded stat
+          setExpandedStat(prev => prev ? {
+            ...prev,
+            stat: {
+              ...prev.stat,
+              details
+            }
+          } : null);
+        }
+      } catch (error) {
+        console.error('Error fetching stat details:', error);
+      }
+    }
+  };
+
+  const renderExpandedStat = () => {
+    if (!expandedStat?.stat) return null;
+
+    const { stat } = expandedStat;
+    const details = stat.details;
+
+    if (!details) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        {/* Header Section */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex-1">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stat.label}
+            </h3>
+            <p className="text-lg text-primary dark:text-primary-light font-semibold mt-2">
+              {stat.value}
+            </p>
+            <p className="text-gray-600 dark:text-gray-400 mt-4">
+              {details.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Breakdown Information */}
+        {details.breakdown && details.breakdown.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Statistical Breakdown
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {details.breakdown.map((item, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
+                >
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {item.label}
+                  </div>
+                  <div className="mt-1 text-base text-gray-900 dark:text-white">
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Trends & Patterns */}
+        {details.trends && details.trends.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Trends & Patterns
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {details.trends.map((trend, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
+                >
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {trend.label}
+                  </div>
+                  <div className="mt-1 text-base text-gray-900 dark:text-white">
+                    {trend.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Clinical Implications */}
+        {details.implications && details.implications.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Clinical Implications
+            </h4>
+            <ul className="space-y-3">
+              {details.implications.map((implication, index) => (
+                <li
+                  key={index}
+                  className="flex items-start"
+                >
+                  <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-primary dark:bg-primary-light mt-2 mr-3" />
+                  <span className="text-gray-700 dark:text-gray-300">{implication}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Related Metrics */}
+        {details.relatedMetrics && details.relatedMetrics.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Related Metrics
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {details.relatedMetrics.map((metric, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
+                >
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {metric.label}
+                  </div>
+                  <div className="mt-1 text-base text-gray-900 dark:text-white">
+                    {metric.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expandedSection || !userQuestion.trim()) return;
+
+    const newHistory = [
+      ...expandedSection.chatHistory,
+      { role: 'user' as const, content: userQuestion },
+      { role: 'assistant' as const, content: 'Analyzing your question...' }
+    ];
+
+    setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+    setUserQuestion('');
+
+    try {
+      const response = await sampleService.getAIResponse(userQuestion, expandedSection.section);
+      if (response.success && response.message) {
+        newHistory[newHistory.length - 1].content = response.message;
+        setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+      } else {
+        newHistory[newHistory.length - 1].content = 'Sorry, I could not generate a response at this time.';
+        setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      newHistory[newHistory.length - 1].content = 'Sorry, I encountered an error while processing your question.';
+      setExpandedSection({ ...expandedSection, chatHistory: newHistory });
+    }
+  };
+
+  const handleExport = () => {
+    if (!sections.length) return;
+
+    const content = sections.map(section => {
+      const sectionText = [
+        `# ${section.title}`,
+        '',
+        '## Key Finding',
+        section.keyFinding,
+        '',
+        '## Statistical Details',
+        ...(section.stats?.map(stat => (
+          `${stat.label}: ${stat.value}${
+            stat.details ? `\n  Description: ${stat.details.description}\n  ${
+              stat.details.breakdown.map(b => `  - ${b.label}: ${b.value}`).join('\n  ')
+            }\n  Trends:\n  ${
+              stat.details.trends.map(t => `  - ${t.label}: ${t.value}`).join('\n  ')
+            }\n  Implications:\n  ${
+              stat.details.implications.map(i => `  - ${i}`).join('\n  ')
+            }\n  Related Metrics:\n  ${
+              stat.details.relatedMetrics.map(m => `  - ${m.label}: ${m.value}`).join('\n  ')
+            }` : ''
+          }`
+        )) || []),
+        '',
+        '## Analysis',
+        section.analysis || 'No analysis available',
+        '\n---\n'
+      ].filter(Boolean);
+
+      return sectionText.join('\n');
+    }).join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai-analysis.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   if (!isOpen) return null;
@@ -102,31 +430,66 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 20, opacity: 0 }}
-        className="bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 my-auto 
+        className="bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-5xl mx-4 my-auto 
                  border border-gray-200 dark:border-gray-700"
       >
         <div className="p-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex justify-between items-center mb-8 border-b border-gray-200 dark:border-gray-700 pb-6">
             <div>
-              <h2 className="text-2xl font-bold bg-clip-text text-transparent 
+              <h2 className="text-3xl font-bold bg-clip-text text-transparent 
                            bg-gradient-to-r from-primary to-primary-dark dark:from-primary-light dark:to-primary">
-                AI Analysis Insights
+                {expandedSection ? expandedSection.section.title : 
+                 expandedStat ? `${expandedStat.sectionTitle} - Details` : 
+                 'Clinical VOC Analysis'}
               </h2>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Advanced analysis of VOC patterns and correlations
+                {expandedSection ? 'Detailed Analysis View' : 
+                 expandedStat ? expandedStat.stat.label :
+                 'Advanced biomarker analysis for cancer detection'}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
-                       dark:hover:text-gray-200 transition-colors p-2 rounded-lg
-                       hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex gap-2">
+              {sections.length > 0 && (
+                <button
+                  onClick={handleExport}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
+                           dark:hover:text-gray-200 transition-colors p-2 rounded-lg
+                           hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Export Analysis"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+              )}
+              {(expandedSection || expandedStat) && (
+                <button
+                  onClick={() => {
+                    setExpandedSection(null);
+                    setExpandedStat(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
+                           dark:hover:text-gray-200 transition-colors p-2 rounded-lg
+                           hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 
+                         dark:hover:text-gray-200 transition-colors p-2 rounded-lg
+                         hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -141,13 +504,12 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                   className="flex flex-col items-center justify-center py-12 space-y-4"
                 >
                   <div className="relative">
-                    <div className="w-16 h-16 border-4 border-primary/20 rounded-full animate-spin">
-                      <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary rounded-full animate-spin-fast" 
-                           style={{ animationDirection: 'reverse' }}></div>
+                    <div className="w-12 h-12 border-4 border-primary/20 rounded-full">
+                      <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary rounded-full animate-spin" />
                     </div>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {retryCount > 0 ? `Retry attempt ${retryCount}/3...` : 'Generating analysis...'}
+                    {retryCount > 0 ? `Retry attempt ${retryCount}/3...` : 'Analyzing data...'}
                   </p>
                 </motion.div>
               ) : error ? (
@@ -175,58 +537,153 @@ export default function AIInsightsModal({ isOpen, onClose }: AIInsightsModalProp
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="space-y-8"
+                  className="space-y-12"
                 >
-                  {sections.map((section, index) => (
-                    <motion.div
-                      key={`section-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="analysis-section mb-8"
-                    >
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 
-                                     relative after:absolute after:bottom-0 after:left-0 after:w-full 
-                                     after:h-0.5 after:bg-gradient-to-r after:from-primary/30 after:to-transparent">
-                        {section.title}
-                      </h3>
-                      
-                      {section.stats && section.stats.length > 0 ? (
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg
-                                      border border-gray-200 dark:border-gray-700
-                                      hover:shadow-xl transition-shadow duration-300">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {section.stats.map((stat, statIdx) => (
-                              <motion.div
-                                key={`stat-${statIdx}`}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: statIdx * 0.05 }}
-                                className="stat-card bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg
-                                         hover:bg-gray-100 dark:hover:bg-gray-700 
-                                         transition-colors duration-200"
-                              >
-                                <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-                                  {stat.label}
-                                </span>
-                                <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                                  {stat.value}
-                                </span>
-                              </motion.div>
-                            ))}
+                  {expandedSection ? (
+                    <div className="flex flex-col h-[60vh]">
+                      {/* Expanded Section Content */}
+                      <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+                        {expandedSection.chatHistory.map((message, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg p-4 ${
+                                message.role === 'user'
+                                  ? 'bg-primary text-white ml-4'
+                                  : 'bg-gray-100 dark:bg-gray-700 mr-4'
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap">{message.content}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Question Input */}
+                      <form onSubmit={handleQuestionSubmit} className="mt-4">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={userQuestion}
+                            onChange={(e) => setUserQuestion(e.target.value)}
+                            placeholder="Ask a question about this finding..."
+                            className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 
+                                     bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white
+                                     focus:ring-2 focus:ring-primary dark:focus:ring-primary-light
+                                     focus:border-transparent"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!userQuestion.trim()}
+                            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg
+                                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  ) : expandedStat ? (
+                    renderExpandedStat()
+                  ) : (
+                    sections.map((section, index) => (
+                      <motion.div
+                        key={`section-${index}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="analysis-section"
+                      >
+                        {/* Section Header */}
+                        <div className="mb-6">
+                          <h3 className="text-2xl font-bold text-gray-900 dark:text-white relative inline-block">
+                            {section.title}
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r 
+                                        from-primary/30 to-transparent rounded-full"></div>
+                          </h3>
+                        </div>
+
+                        {/* Key Finding */}
+                        <div 
+                          className="mb-6 transform transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+                          onClick={() => handleSectionClick(section)}
+                        >
+                          <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-6
+                                      border-l-4 border-primary shadow-sm hover:shadow-md
+                                      hover:border-l-8 transition-all duration-200">
+                            <h4 className="text-sm uppercase tracking-wider text-primary dark:text-primary-light 
+                                       font-semibold mb-2 flex items-center justify-between">
+                              Key Finding
+                              <svg className="w-5 h-5 text-primary/50 group-hover:text-primary transition-colors" 
+                                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                      d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                              </svg>
+                            </h4>
+                            <p className="text-gray-900 dark:text-white text-lg font-medium leading-relaxed">
+                              {section.keyFinding || 'No key finding available'}
+                            </p>
                           </div>
                         </div>
-                      ) : (
-                        <div className="text-gray-700 dark:text-gray-300">
-                          {section.content.map((line, lineIdx) => (
-                            <p key={lineIdx} className="mb-3 leading-relaxed">
-                              {line}
+
+                        {/* Statistical Details */}
+                        {section.stats && section.stats.length > 0 && (
+                          <div className="mb-6">
+                            <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
+                                       font-semibold mb-4">
+                              Statistical Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {section.stats.map((stat, statIdx) => (
+                                <motion.div
+                                  key={`stat-${statIdx}`}
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: statIdx * 0.05 }}
+                                  className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm
+                                         border border-gray-200 dark:border-gray-700
+                                         hover:shadow-md transition-all duration-200 cursor-pointer
+                                         hover:border-primary dark:hover:border-primary-light
+                                         transform hover:-translate-y-0.5"
+                                  onClick={() => handleStatClick(section.title, stat)}
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                      {stat.label}
+                                    </span>
+                                    <span className="text-base font-semibold text-gray-900 dark:text-white
+                                                 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded">
+                                      {stat.value}
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 text-xs text-primary/70 dark:text-primary-light/70">
+                                    Click for detailed analysis
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Analysis */}
+                        {section.analysis && (
+                          <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
+                            <h4 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 
+                                       font-semibold mb-3">
+                              Analysis
+                            </h4>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {section.analysis}
                             </p>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
+                          </div>
+                        )}
+                      </motion.div>
+                    ))
+                  )}
                 </motion.div>
               ) : (
                 <motion.div
