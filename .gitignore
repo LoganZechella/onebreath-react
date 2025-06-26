@@ -27,3 +27,9 @@ src/server/scripts/__pycache__
 *.njsproj
 *.sln
 *.sw?
+
+.vscode/
+__pycache__
+*/__pycache__
+**/__pycache__
+***/__pycache__
