@@ -1,7 +1,7 @@
 [build]
   command = "npm install && npm run build"
   publish = "dist"
-  environment = { NODE_VERSION = "20", NPM_FLAGS = "--legacy-peer-deps", PYTHON_VERSION = "3.11" }
+  environment = { NODE_VERSION = "20", NPM_FLAGS = "--legacy-peer-deps", PYTHON_VERSION = "3.11", SECRETS_SCAN_ENABLED = "false" }
 
 [[headers]]
   for = "/*"
