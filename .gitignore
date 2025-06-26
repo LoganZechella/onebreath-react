@@ -16,7 +16,7 @@ dist-ssr
 src/server/Firebaseadminsdk.json
 src/server/scripts/set_admin.py
 src/server/scripts/__pycache__
-
+.venv
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
