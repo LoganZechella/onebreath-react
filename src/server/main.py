@@ -31,7 +31,13 @@ app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["https://onebreathpilot.netlify.app", "http://localhost:5173"],
+         "origins": [
+             "https://onebreathpilot.netlify.app",
+             "http://localhost:5173",
+             "http://localhost:8081",
+             "exp://localhost:*",
+             "http://192.168.*.*:*"
+         ],
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "supports_credentials": True,
@@ -51,7 +57,13 @@ scheduler.start()
 # Initialize SocketIO with specific configuration for production
 socketio = SocketIO(
     app,
-    cors_allowed_origins=["https://onebreathpilot.netlify.app", "http://localhost:5173"],
+    cors_allowed_origins=[
+        "https://onebreathpilot.netlify.app",
+        "http://localhost:5173",
+        "http://localhost:8081",
+        "exp://localhost:*",
+        "http://192.168.*.*:*"
+    ],
     async_mode='eventlet',  # Changed from 'gevent' to 'eventlet'
     logger=True,
     engineio_logger=True,
