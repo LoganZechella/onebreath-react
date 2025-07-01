@@ -3,7 +3,6 @@
   "install": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && npm install",
   "start": "source .venv/bin/activate && sh run.sh & npm run dev",
   "build": {
-    "context": "..",
-    "dockerfile": ".cursor/Dockerfile"
+    "dockerfile": "Dockerfile"
   }
 }
