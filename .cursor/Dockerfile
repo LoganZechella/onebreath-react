@@ -28,9 +28,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 # Verify installations
 RUN python3 --version && node --version && npm --version
 
-# Create a non-root user
-RUN useradd -m -s /bin/bash ubuntu && \
-    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Ensure ubuntu user has sudo privileges (user already exists in Ubuntu 24.04)
+RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Switch to the non-root user
 USER ubuntu
