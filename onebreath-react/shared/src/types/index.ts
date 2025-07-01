@@ -46,3 +46,15 @@ export type RootStackParamList = {
   Profile: undefined;
   Settings: undefined;
 };
+
+// QR Scanner component props (mobile / web can share)
+export interface QRScannerProps {
+  onScanSuccess: (data: string) => void;
+  onScanError?: (error: string) => void;
+}
+
+// Generic typed screen props helper using React Navigation
+export type ScreenProps<RouteName extends keyof RootStackParamList> = {
+  navigation: any;
+  route: { key?: string; name: RouteName; params: RootStackParamList[RouteName] };
+};

@@ -4,7 +4,7 @@ import { auth } from './firebase';
 
 const baseURL: string = (Constants.expoConfig?.extra as any)?.apiUrl || 'http://localhost:5000';
 
-class ApiService {
+export class ApiService {
   private api: AxiosInstance;
 
   constructor() {
@@ -49,4 +49,5 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+export type ApiServiceType = typeof apiService;
 export default apiService;
