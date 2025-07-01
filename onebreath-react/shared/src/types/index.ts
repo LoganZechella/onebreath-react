@@ -35,26 +35,5 @@ export interface SocketEvents {
   };
 }
 
-export type RootStackParamList = {
-  Login: undefined;
-  Dashboard: undefined;
-  QRScanner: undefined;
-  SampleDetails: { sampleId: string };
-  SampleForm: { sampleId?: string };
-  DataView: undefined;
-  AdminDashboard: undefined;
-  Profile: undefined;
-  Settings: undefined;
-};
-
-// QR Scanner component props (mobile / web can share)
-export interface QRScannerProps {
-  onScanSuccess: (data: string) => void;
-  onScanError?: (error: string) => void;
-}
-
-// Generic typed screen props helper using React Navigation
-export type ScreenProps<RouteName extends keyof RootStackParamList> = {
-  navigation: any;
-  route: { key?: string; name: RouteName; params: RootStackParamList[RouteName] };
-};
+export * from './navigation';
+export * from './qr';
