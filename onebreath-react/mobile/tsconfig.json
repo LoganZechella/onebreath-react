@@ -4,8 +4,10 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/src/*"]
-    }
+      "@shared/*": ["../shared/src/*"],
+      "@shared": ["../shared/src/index.ts"]
+    },
+    "jsx": "react-jsx"
   },
   "include": ["**/*.ts", "**/*.tsx", "../shared/src/**/*"],
   "exclude": ["node_modules"]

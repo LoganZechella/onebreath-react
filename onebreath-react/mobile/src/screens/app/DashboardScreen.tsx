@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList, Sample } from '@shared/src/types';
-import { apiService } from '@shared/src/services/api';
+import { RootStackParamList, Sample } from '@shared/types';
+import { apiService } from '@shared/services/api';
 
 
 type Props = StackScreenProps<RootStackParamList, 'Dashboard'>;

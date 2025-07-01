@@ -1,12 +1,12 @@
-import { io, Socket } from 'socket.io-client';
+import io from 'socket.io-client';
 import Constants from 'expo-constants';
 
 const baseURL: string = (Constants.expoConfig?.extra as any)?.apiUrl || 'http://localhost:5000';
 
 class SocketService {
-  private socket: Socket | null = null;
+  private socket: any | null = null;
 
-  connect(): Promise<Socket> {
+  connect(): Promise<any> {
     return new Promise((resolve, reject) => {
       this.socket = io(baseURL, {
         transports: ['websocket', 'polling'],

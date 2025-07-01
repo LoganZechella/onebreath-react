@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { useAuth } from '@shared/src/context/AuthContext';
+import { useAuth } from '@shared/context/AuthContext';
 import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList } from '@shared/src/types';
+import { RootStackParamList } from '@shared/types';
 
 type Props = StackScreenProps<RootStackParamList, 'Login'>;
 

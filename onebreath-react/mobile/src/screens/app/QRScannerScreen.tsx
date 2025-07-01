@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList } from '@shared/src/types';
+import { RootStackParamList } from '@shared/types';
 import { QRScanner } from '../../components/QRScanner';
-import { apiService } from '@shared/src/services/api';
+import { apiService } from '@shared/services/api';
 
 type Props = StackScreenProps<RootStackParamList, 'QRScanner'>;
 
