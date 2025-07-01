@@ -1,5 +1,5 @@
 {
   "agentCanUpdateSnapshot": true,
-  "install": "npm install && python -m .venv venv && source .venv/bin/activate && pip install -r requirements.txt",
-  "start": "sh run.sh && npm run dev"
+  "install": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && npm install",
+  "start": "source .venv/bin/activate && sh run.sh & npm run dev"
 }
