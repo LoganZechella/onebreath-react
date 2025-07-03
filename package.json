@@ -1,6 +1,10 @@
 {
   "name": "onebreathpilot_v2.0",
   "private": true,
+  "workspaces": [
+    "onebreath-react/mobile",
+    "onebreath-react/shared"
+  ],
   "version": "2.0.0",
   "type": "module",
   "scripts": {
@@ -17,7 +21,7 @@
     "axios": "^1.6.7",
     "chart.js": "^4.4.1",
     "d3": "^7.8.5",
-    "firebase": "^10.8.0",
+    "firebase": "^11.6.1",
     "framer-motion": "^11.11.17",
     "html5-qrcode": "^2.3.8",
     "react": "^18.2.0",
