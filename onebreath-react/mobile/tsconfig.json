@@ -13,7 +13,10 @@
         "../shared/src/index.ts"
       ]
     },
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": [
+      "expo-constants"
+    ]
   },
   "include": [
     "**/*.ts",
